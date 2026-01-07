@@ -1,0 +1,49 @@
+import { Item } from './item.js';
+import { weightedChoice } from './chance.js';
+
+export class ItemHelper {
+    static numRolls = {
+        0: [1, 3],
+        1: [1, 4],
+        2: [2, 5],
+        3: [3, 5],
+    }
+
+    static getNumRolls(itemRarity) {
+        let min = this.numRolls[itemRarity][0];
+        let max = this.numRolls[itemRarity][1];
+
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    static itemRarities = [
+        0,
+        1,
+        2,
+        3
+    ]
+
+    static itemRarityWeights = [
+        75,
+        20,
+        4,
+        1
+    ]
+
+    static getRandomRarity() {
+        return weightedChoice(this.itemRarities, this.itemRarityWeights);
+    }
+
+    static itemBases = [
+        0,
+        1,
+        2,
+        3
+    ]
+
+    static getRandomBase() {
+        let randomIndex = Math.floor(Math.random() * this.itemBases.length);
+
+        return this.itemBases[randomIndex];
+    }
+}
