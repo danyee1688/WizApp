@@ -25,6 +25,7 @@ export class Item {
         this.itemType = ItemHelper.getRandomBase();
         this.itemRarity = ItemHelper.getRandomRarity();
         this.stats = this.rollStats();
+        this.itemName = ItemHelper.generateName(this.itemType, this.stats);
     }
 
     typeToString() {
@@ -72,8 +73,14 @@ export class Item {
         let stats = [];
 
         for (let i = 0; i < numStats; i++) {
-            stats.push(StatDB.getRandomStat(this.itemType, this.itemRarity));
+            let stat = StatDB.getRandomStat(stats, this.itemType, this.itemRarity);
+
+            if (stat != null) {
+                stats.push(stat);
+            }
         }
+
+        console.log(stats);
 
         return stats;
     }
@@ -92,6 +99,10 @@ export class Item {
         return [
             {
                 type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `### ${this.itemName}`,
+            },
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
                 content: `### ${this.rarityToString()} ${this.typeToString()}`,
             },
             {
@@ -103,6 +114,7 @@ export class Item {
 
     toJSON() {
         return {
+            itemName: this.itemName,
             itemType: this.itemType,
             itemRarity: this.itemRarity,
             stats: this.stats.map(stat => stat.toJSON()),
@@ -115,6 +127,7 @@ export class Item {
         item.itemRarity = data.itemRarity;
         item.stats = [];
         item.stats = data.stats.map(statData => Stat.fromJSON(statData));
+        item.itemName = data.itemName;
 
         return item;
     }

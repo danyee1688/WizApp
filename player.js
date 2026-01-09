@@ -25,7 +25,8 @@ export class Player {
         };
         this.gold = 0;
         this.spellList[0] = SpellDB.getStartingSpell();
-        this.increasedDamages = [0, 0, 0, 0, 0];
+        this.increasedDamages = [0, 0, 0, 0, 0, 0];
+        this.increasedCrits = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]];
         this.increasedHealingReceived = 0;
         this.dodgeChance = 0;
     }
@@ -68,14 +69,17 @@ export class Player {
         this.health = this.maxHealth;
         this.resistances = [0, 0, 0];
         this.attributes = [0, 0, 0];
-        this.increasedDamages = [0, 0, 0, 0, 0];
+        this.increasedDamages = [0, 0, 0, 0, 0, 0];
+        this.increasedCrits = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]];
         this.increasedHealingReceived = 0;
         this.dodgeChance = 0;
     }
 
     takeDamage(amount) {
+        let stringified = '';
+
         if (chance(this.dodgeChance) === true) {
-            console.log(`- ${this.username} dodged`);
+            stringified = `- ${this.username} dodged`;
         }
         else {
             let [scorchDam, voltDam, freezeDam] = amount;
@@ -85,10 +89,16 @@ export class Player {
             totalDam += (voltDam * (1 - (voltRes / 100)));
             totalDam += (freezeDam * (1 - (freezeRes / 100)));
 
+            totalDam = Math.floor(totalDam);
+
             this.health -= totalDam;
 
-            console.log(`- ${this.username} took ${totalDam} damage`);
+            stringified = `- ${this.username} took ${totalDam} damage (${this.health}/${this.maxHealth})`;
         }
+
+        console.log(stringified);
+
+        return stringified;
     }
 
     heal(amount) {
@@ -156,7 +166,7 @@ export class Player {
 
         if (doc.spell_list) {
             player.spellList = doc.spell_list.map(
-                spellData => spellData ? new Spell(spellData._id, spellData.spell_name, spellData.base_damage, spellData.tags) : null
+                spellData => spellData ? new Spell(spellData._id, spellData.tier, spellData.spell_name, spellData.base_damage, spellData.crit_chance, spellData.crit_damage, spellData.tags) : null
             );
         }
 
@@ -332,6 +342,18 @@ export class Player {
         let addedDexterity = 0;
         let addedStrength = 0;
         let addedIntelligence = 0;
+        let increasedCritChance = 0;
+        let addedCritDamage = 0;
+        let increasedScorchCritChance = 0;
+        let addedScorchCritDamage = 0;
+        let increasedVoltCritChance = 0;
+        let addedVoltCritDamage = 0;
+        let increasedFreezeCritChance = 0;
+        let addedFreezeCritDamage = 0;
+        let increasedProjectileCritChance = 0;
+        let addedProjectileCritDamage = 0;
+        let increasedAreaCritChance = 0;
+        let addedAreaCritDamage = 0;
 
         stats.forEach((stat) => {
             switch (stat.statID) {
@@ -389,6 +411,36 @@ export class Player {
                 case 17:
                     increasedHealingReceived += stat.value;
                     break;
+                case 18:
+                    increasedCritChance += stat.value;
+                    break;
+                case 19:
+                    increasedCritChance += stat.value;
+                    break;
+                case 20:
+                    addedCritDamage += stat.value;
+                    break;
+                case 21:
+                    addedCritDamage += stat.value;
+                    break;
+                case 22:
+                    increasedScorchCritChance += stat.value;
+                    break;
+                case 23:
+                    increasedVoltCritChance += stat.value;
+                    break;
+                case 24:
+                    increasedFreezeCritChance += stat.value;
+                    break;
+                case 25:
+                    increasedScorchCritChance += stat.value;
+                    break;
+                case 26:
+                    increasedVoltCritChance += stat.value;
+                    break;
+                case 27:
+                    increasedFreezeCritChance += stat.value;
+                    break;
             }
         });
 
@@ -416,6 +468,14 @@ export class Player {
         this.increasedDamages[3] += increasedProjectileDam;
         this.increasedDamages[4] += increasedAreaDam;
         this.increasedHealingReceived += increasedHealingReceived;
+        this.increasedCrits = [
+            [increasedCritChance, addedCritDamage],
+            [increasedScorchCritChance, addedScorchCritDamage],
+            [increasedVoltCritChance, addedVoltCritDamage],
+            [increasedFreezeCritChance, addedFreezeCritDamage],
+            [increasedProjectileCritChance, addedProjectileCritDamage],
+            [increasedAreaCritChance, addedAreaCritDamage],
+        ];
     }
 
     showInventory() {

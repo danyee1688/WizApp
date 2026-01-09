@@ -16,8 +16,11 @@ const PlayerSchema = new mongoose.Schema({
     spell_list: [
         {
             _id: Number,
+            tier: Number,
             spell_name: String,
             base_damage: [Number],
+            crit_chance: Number,
+            crit_damage: Number,
             tags: [String],
         }
     ],

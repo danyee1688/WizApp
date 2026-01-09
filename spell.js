@@ -4,10 +4,13 @@ import {
  } from "discord-interactions";
 
 export class Spell {
-    constructor(spellID, spellName, baseDamage, tags) {
+    constructor(spellID, tier, spellName, baseDamage, critChance, critDamage, tags) {
         this.spellID = spellID;
+        this.tier = tier;
         this.spellName = spellName;
         this.baseDamage = baseDamage;
+        this.critChance = critChance;
+        this.critDamage = critDamage;
         this.tags = tags;
     }
 
@@ -43,10 +46,39 @@ export class Spell {
         return retVal;
     }
 
+    getTierString() {
+        let retVal = 'Tier ';
+
+        switch (this.tier) {
+            case 1:
+                retVal += 'I';
+                break;
+            case 2:
+                retVal += 'II';
+                break;
+            case 3:
+                retVal += 'III';
+                break;
+            case 4:
+                retVal += 'IV';
+                break;
+            case 5:
+                retVal += 'V';
+                break;
+            default:
+                break;
+        }
+
+        return retVal;
+    }
+
     toJSON() {
         return {
             _id: this.spellID,
             spell_name: this.spellName,
+            tier: this.tier,
+            crit_chance: this.critChance,
+            crit_damage: this.critDamage,
             base_damage: this.baseDamage,
             tags: this.tags,
         }
@@ -56,7 +88,7 @@ export class Spell {
         return [
             {
                 type: MessageComponentTypes.TEXT_DISPLAY,
-                content: `### ${this.spellName}`,
+                content: `### ${this.spellName} ${this.getTierString()}`,
             },
             {
                 type: MessageComponentTypes.TEXT_DISPLAY,
@@ -65,6 +97,10 @@ export class Spell {
             {
                 type: MessageComponentTypes.TEXT_DISPLAY,
                 content: this.getDamageString(),
+            },
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `CC: ${this.critChance}% | CD: ${this.critDamage}%`,
             },
             {
                 type: MessageComponentTypes.TEXT_DISPLAY,

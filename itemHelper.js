@@ -46,4 +46,45 @@ export class ItemHelper {
 
         return this.itemBases[randomIndex];
     }
+
+    static itemBaseNames = {
+        0: [
+            "Rod",
+            "Cane",
+            "Branch",
+            "Pole",
+        ],
+        1: [
+            "Necklace",
+            "Pendant",
+            "Charm",
+            "Talisman",
+        ],
+        2: [
+            "Banglet",
+            "Band",
+            "Loop"
+        ],
+        3: [
+            "Girdle",
+            "Sash",
+            "Strap",
+        ]
+    }
+
+    static generateName(type, stats) {
+        let resultantName = '';
+        let itemBaseNames = this.itemBaseNames[type];
+        let randomIndex = Math.floor(Math.random() * itemBaseNames.length);
+        let itemBaseName = itemBaseNames[randomIndex];
+
+        if (stats.length > 1) {
+            resultantName += stats[0].statName + ' ' + stats[1].statName + ' ' + itemBaseName
+        }
+        else {
+            resultantName += stats[0].statName + ' ' + itemBaseName;
+        }
+
+        return resultantName;
+    }
 }

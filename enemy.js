@@ -29,6 +29,8 @@ export class Enemy {
         totalDam += (voltDam * (1 - (voltRes / 100)));
         totalDam += (freezeDam * (1 - (freezeRes / 100)));
 
+        totalDam = Math.floor(totalDam);
+
         this.enemyHealth -= totalDam;
 
         console.log(`- ${this.enemyName} took ${totalDam} damage`);

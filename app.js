@@ -27,15 +27,14 @@ import { Item } from './item.js';
 import { LootManager } from './lootManager.js';
 import { randomUUID } from "crypto";
 import { chance } from './chance.js';
+import { WikiDB } from './wikiDB.js';
+import { Arena } from './arena.js';
 
 // Create an express app
 const app = express();
 // Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
-let activeArena = false;
-let arenaUsers = [];
-let arenaStartEndpoint = ``;
-let wizardInfoEndpoint = ``;
+let activeArenas = {};
 
 await connectToDB();
 
@@ -128,54 +127,54 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
 
     if (name === 'arena' && id) {
-      if (activeArena) {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
-            {
-              type: MessageComponentTypes.TEXT_DISPLAY,
-              content: `An arena has already started.`,
-            }
-            ]
-          }
-        });
-      }
-      else {
-        const context = req.body.context;
-        const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
-        activeArena = true;
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const arenaID = randomUUID();
 
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
+      activeArenas[arenaID] = [];
+
+      console.log('active arenas: ')
+      console.log(activeArenas);
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+          components: [
             {
-              type: MessageComponentTypes.TEXT_DISPLAY,
-              content: `A Wizardry Arena has opened! All are welcome.`,
-            },
-            {
-              type: MessageComponentTypes.ACTION_ROW,
+              type: MessageComponentTypes.CONTAINER,
+              accent_color: 0xFFFFFF,
               components: [
                 {
-                  type: MessageComponentTypes.BUTTON,
-                  custom_id: `join_button_${req.body.id}`,
-                  label: 'Join',
-                  style: ButtonStyleTypes.PRIMARY,
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: '# 🏟️ Arena'
                 },
                 {
-                  type: MessageComponentTypes.BUTTON,
-                  custom_id: `start_button_${req.body.id}`,
-                  label: 'Start',
-                  style: ButtonStyleTypes.PRIMARY,
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `A Wizardry Arena has opened! All are welcome.`,
                 },
+                {
+                  type: MessageComponentTypes.ACTION_ROW,
+                  components: [
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      custom_id: `join_button_${arenaID}`,
+                      label: 'Join',
+                      style: ButtonStyleTypes.PRIMARY,
+                    },
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      custom_id: `start_button_${arenaID}`,
+                      label: 'Start',
+                      style: ButtonStyleTypes.PRIMARY,
+                    },
+                  ]
+                }
               ]
-            }]
-          }
-        });
-      }
+            }
+          ]
+        }
+      });
     }
 
     if (name === 'wizard') {
@@ -190,8 +189,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       if (playerExists === true) {
         let player = await loadPlayer(userID);
         let componentList = player.showPlayer(userID);
-
-        wizardInfoEndpoint = "";
 
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -272,11 +269,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   },
                   {
                     type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: `Purchase loot crates here! Each loot crate is 1000 gold.`
+                    content: `Purchase loot crates here! Each loot crate costs 500 gold.`
                   },
                   {
                     type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: `You currently have ${player.gold} gold.`
+                    content: `${player.username} currently has ${player.gold} gold.`
                   },
                   {
                     type: MessageComponentTypes.ACTION_ROW,
@@ -352,6 +349,35 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
+    if (name === 'wiki') {
+      const context = req.body.context;
+      const entry = req.body.data.options[0].value;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+          accent_color: 0x101010,
+          components: [
+            {
+              type: MessageComponentTypes.CONTAINER,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `### ${WikiDB.wikiEntries[entry].title}`,
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: WikiDB.wikiEntries[entry].entry,
+                }
+              ]
+            }
+          ]
+        }
+      });
+    }
+
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
   }
@@ -360,16 +386,112 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.MESSAGE_COMPONENT) {
     const componentID = data.custom_id;
 
-      if (componentID.startsWith('join_button_')) {
-        const context = req.body.context;
-        const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+    if (componentID.startsWith('join_button_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const arenaID = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
-        if (arenaStartEndpoint === ``) {
-          arenaStartEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+      let playerExists = await hasPlayer(userID);
+      if (playerExists === true) {
+        try {
+          if (activeArenas[arenaID].includes(userID)) {
+            console.log(`User ${userID} already in arena.`);
+            try {
+              await res.send({
+                type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                data: {
+                  flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: "You have already joined this Arena!",
+                    },
+                  ]
+                }
+              });
+            } catch (err) {
+              console.error('Error sending message', err);
+            }
+          }
+          else {
+            activeArenas[arenaID].push(userID);
+
+            try {
+              await res.send({
+                type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                data: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `<@${userID}> has joined the fight! Good luck, you'll need it.`,
+                    }
+                  ]
+                }
+              });
+
+              await DiscordRequest(endpoint, {
+                method: 'PATCH',
+                body: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0xFFFFFF,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: '# 🏟️ Arena'
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `A Wizardry Arena has opened! All are welcome. ${activeArenas[arenaID].length} ready to spar.`,
+                        },
+                        {
+                          type: MessageComponentTypes.ACTION_ROW,
+                          components: [
+                            {
+                              type: MessageComponentTypes.BUTTON,
+                              custom_id: `join_button_${arenaID}`,
+                              label: 'Join',
+                              style: ButtonStyleTypes.PRIMARY,
+                            },
+                            {
+                              type: MessageComponentTypes.BUTTON,
+                              custom_id: `start_button_${arenaID}`,
+                              label: 'Start',
+                              style: ButtonStyleTypes.PRIMARY,
+                            },
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              });
+            } catch (err) {
+              console.error('Error sending message', err);
+            }
+          }
+        } catch (err) {
+          console.error('Arena join error: ', err);
         }
+      }
+      else {
+        try {
+          await getWizardMissingResponse(res);
+        } catch (err) {
+          console.error('Error sending message', err);
+        }
+      }
+    }
+    else if (componentID.startsWith('start_button_')) {
+      const arenaID = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
 
-        if (arenaUsers.includes(userID)) {
-          console.log(`User ${userID} already in arena.`);
+      try {
+        if (activeArenas[arenaID].length <= 1) {
           try {
             await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -378,8 +500,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 components: [
                   {
                     type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: "You have already joined this Arena!",
-                  },
+                    content: `Cannot start the arena with ${activeArenas[arenaID].length} wizard(s)`,
+                  }
                 ]
               }
             });
@@ -388,110 +510,125 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           }
         }
         else {
-          arenaUsers.push(userID);
+          const followUpEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}`;
 
           try {
             await res.send({
-              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-              data: {
+              type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
+            });
+
+            await DiscordRequest(endpoint, {
+              method: 'PATCH',
+              body: {
                 flags: InteractionResponseFlags.IS_COMPONENTS_V2,
                 components: [
                   {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: `<@${userID}> has joined the fight! Good luck, you'll need it.`,
-                  }
-                ]
-              }
-            });
-
-            await DiscordRequest(arenaStartEndpoint, {
-              method: 'PATCH',
-              body: {
-                components: [
-                  {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: `A Wizardry Arena has opened! All are welcome, ${arenaUsers.length} has joined.`,
-                  },
-                  {
-                    type: MessageComponentTypes.ACTION_ROW,
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0xFFFFFF,
                     components: [
                       {
-                        type: MessageComponentTypes.BUTTON,
-                        custom_id: `join_button_${req.body.id}`,
-                        label: 'Join',
-                        style: ButtonStyleTypes.PRIMARY,
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: '# 🏟️ Arena'
                       },
                       {
-                        type: MessageComponentTypes.BUTTON,
-                        custom_id: `start_button_${req.body.id}`,
-                        label: 'Start',
-                        style: ButtonStyleTypes.PRIMARY,
-                      },
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: 'The arena begins!\nEach wizard has their health reduced to 1/4th of their maximum health.\nGood luck wizards!',
+                      }
                     ]
                   }
                 ]
               }
-            });
+            })
+
+            let arena = new Arena(activeArenas[arenaID]);
+            let messages = await arena.startArena();
+
+            for (let i = 0; i < messages.length; i++) {
+              setTimeout(async () => {
+                let componentList = [];
+
+                if (messages[i].includes("perished")){
+                  componentList = [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0xFF0000,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: messages[i],
+                        }
+                      ]
+                    }
+                  ];
+                }
+                else if (i === messages.length - 1) {
+                  componentList = [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0x00FF00,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: '## 🎊 Arena Results'
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: messages[i],
+                        },
+                        {
+                          type: MessageComponentTypes.SEPARATOR,
+                          spacing: 1,
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: '-# Start another arena with /arena!'
+                        }
+                      ]
+                    }
+                  ];
+                }
+                else {
+                  componentList = [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0xFFFFFF,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: messages[i],
+                        }
+                      ]
+                    }
+                  ];
+                }
+
+                try {
+                  await DiscordRequest(followUpEndpoint, {
+                    method: 'POST',
+                    body: {
+                      flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                      components: componentList,
+                    }
+                  });
+                } catch (err) {
+                  console.error("Timeout error: " + err);
+                }
+              }, i * 2500);
+            }
+
+            delete activeArenas[arenaID];
           } catch (err) {
             console.error('Error sending message', err);
           }
         }
-    }
-    else if (componentID.startsWith('start_button_')) {
-      if (arenaStartEndpoint === ``) {
-        arenaStartEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-      }
-
-      if (arenaUsers.length <= 1) {
-        try {
-          await res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `Cannot start the arena with ${arenaUsers.length} wizard(s)`,
-                }
-              ]
-            }
-          });
-        } catch (err) {
-          console.error('Error sending message', err);
-        }
-      }
-      else {
-        try {
-          await res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `The Arena begins!`,
-                }
-              ]
-            }
-          });
-
-          arenaUsers = [];
-
-          await DiscordRequest(arenaStartEndpoint, {
-            method: 'DELETE',
-          })
-        } catch (err) {
-          console.error('Error sending message', err);
-        }
+      } catch (err) {
+        console.error('Arena start error: ', err);
       }
     }
     else if (componentID.startsWith('spells_')) {
       const context = req.body.context;
       const userID = componentID.split('_')[1];
-      
-      if (wizardInfoEndpoint === ``) {
-          wizardInfoEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-      }
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
       let player = await loadPlayer(userID);
       let componentList = player.showSpells();
@@ -501,7 +638,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE
         });
 
-        await DiscordRequest(wizardInfoEndpoint, {
+        await DiscordRequest(endpoint, {
           method: 'PATCH',
           body: {
             flags: InteractionResponseFlags.IS_COMPONENTS_V2,
@@ -521,10 +658,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     else if (componentID.startsWith('back_to_wizard_')) {
       const context = req.body.context;
       const userID = componentID.split('_')[3];
-      
-      if (wizardInfoEndpoint === ``) {
-          wizardInfoEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-      }
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
       let playerExists = await hasPlayer(userID);
       if (playerExists === true) {
@@ -536,7 +670,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE
           });
 
-          await DiscordRequest(wizardInfoEndpoint, {
+          await DiscordRequest(endpoint, {
             method: 'PATCH',
             body: {
               flags: InteractionResponseFlags.IS_COMPONENTS_V2,
@@ -682,14 +816,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const context = req.body.context;
       const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-
+      const shopEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
       const playerExists = await hasPlayer(userID);
       if (playerExists === true) {
         const player = await loadPlayer(userID);
 
         try {
+          // Check if player has enough gold
           if (player.gold >= 500) {
-            player.gold -= 500;
+            player.gold -= 500; 
             await savePlayer(player);
             let componentList = [];
             let color = 0x000000;
@@ -771,6 +906,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                     content: 'You have found a spell scroll!',
                   },
                 ].concat(spell.toComponent()).concat(buttonComponent);
+
+                setTimeout(async () => {
+                  try {
+                    await DiscordRequest(endpoint, {
+                      method: 'DELETE',
+                    });
+
+                    LootManager.removeLoot(itemID);
+                  } catch (err) {
+                    console.error("Timeout error: " + err);
+                  }
+                }, 30_000);
               }
             }
             
@@ -789,8 +936,56 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   ]
                 }
               });
+
+              await DiscordRequest(shopEndpoint, {
+                method: "PATCH",
+                body: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0xFFFF00,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `# 💰 Shop`
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `Purchase loot crates here! Each loot crate costs 500 gold.`
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `${player.username} currently has ${player.gold} gold.`
+                        },
+                        {
+                          type: MessageComponentTypes.ACTION_ROW,
+                          components: [
+                            {
+                              type: MessageComponentTypes.BUTTON,
+                              style: ButtonStyleTypes.PRIMARY,
+                              custom_id: `purchase_loot_${userID}`,
+                              label: "Purchase Loot Crate",
+                            },
+                            {
+                              type: MessageComponentTypes.BUTTON,
+                              style: ButtonStyleTypes.SECONDARY,
+                              custom_id: `close_shop_${userID}`,
+                              label: "Close Shop",
+                            },
+                          ]
+                        },
+                      ]
+                    }
+                  ]
+                }
+              });
             }
+            // Spell learning error (should theoretically never be possible)
             else {
+              player.gold += 500;
+              await savePlayer(player);
+
               await res.send({
                 type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
                 data: {
@@ -798,13 +993,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: 'You have dropped a spell scroll, but you have already learnt all possible spells!'
+                      content: 'You have dropped a spell scroll, but you have already learnt all possible spells! Your gold has been refunded'
                     }
                   ]
                 }
               });
             }
           }
+          // Not enough gold
           else {
             await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -865,15 +1061,22 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         if (playerExists === true) {
           const player = await loadPlayer(userID);
 
-          console.log("item acquired: ", item.itemType);
-
           player.equipItem(item);
           await savePlayer(player);
 
           // Delete loot message 
           try {
             await res.send({
-              type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `${player.username} has equipped ${item.itemName}, ${item.rarityToString()} ${item.typeToString()}!`
+                  }
+                ]
+              }
             });
 
             await DiscordRequest(endpoint, {
@@ -909,10 +1112,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     else if (componentID.startsWith('inventory_')) {
       const context = req.body.context;
       const userID = componentID.split('_')[1];
-      
-      if (wizardInfoEndpoint === ``) {
-          wizardInfoEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-      }
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
       let player = await loadPlayer(userID);
       let componentList = player.showInventory().concat([
@@ -934,7 +1134,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE
         });
 
-        await DiscordRequest(wizardInfoEndpoint, {
+        await DiscordRequest(endpoint, {
           method: 'PATCH',
           body: {
             flags: InteractionResponseFlags.IS_COMPONENTS_V2,

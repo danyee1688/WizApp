@@ -75,6 +75,56 @@ const DUEL_COMMAND = {
   contexts: [0, 2],
 }
 
+const WIKI_COMMAND = {
+  name: 'wiki',
+  description: 'Learn more about mechanics in Wiz',
+  type: 1,
+  options: [
+    {
+      name: 'entry',
+      type: 3,
+      description: 'select an entry to view',
+      required: true,
+      choices: [
+        {
+          name: 'Strength',
+          value: 'Strength',
+        },
+        {
+          name: 'Dexterity',
+          value: 'Dexterity',
+        },
+        {
+          name: 'Intelligence',
+          value: 'Intelligence',
+        },
+        {
+          name: 'Critical Hits',
+          value: 'Critical Hits',
+        },
+        {
+          name: 'Resistances',
+          value: 'Resistances',
+        },
+        {
+          name: 'Items',
+          value: 'Items',
+        },
+        {
+          name: 'Spells',
+          value: 'Spells',
+        },
+        {
+          name: 'Damage',
+          value: 'Damage',
+        },
+      ],
+    }
+  ],
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+}
+
 const ALL_COMMANDS = [
   TEST_COMMAND, 
   START_COMMAND, 
@@ -83,6 +133,7 @@ const ALL_COMMANDS = [
   ADVENTURE_COMMAND, 
   SHOP_COMMAND,
   DUEL_COMMAND,
+  WIKI_COMMAND,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
