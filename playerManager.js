@@ -30,7 +30,17 @@ const PlayerSchema = new mongoose.Schema({
         ring1: Object,
         ring2: Object,
         belt: Object,
-    }
+    },
+    fish_list: [
+        {
+            _id: Number,
+            fish_name: String,
+            fish_rarity: String,
+            weight_rolls: [Number],
+            weight: Number,
+            value: Number,
+        }
+    ],
 });
 
 export const PlayerModel = mongoose.model("Player", PlayerSchema);

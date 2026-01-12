@@ -6,6 +6,7 @@ import {
   MessageComponentTypes,
 } from 'discord-interactions';
 import { chance } from './chance.js';
+import { Fish } from './fish.js';
 
 export class Player {
     constructor(userID, username) {
@@ -29,6 +30,7 @@ export class Player {
         this.increasedCrits = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]];
         this.increasedHealingReceived = 0;
         this.dodgeChance = 0;
+        this.fishList = [];
     }
 
     setDodgeChance(dodgeChance) {
@@ -145,6 +147,7 @@ export class Player {
                 ring2: this.inventory.ring2 ? this.inventory.ring2.toJSON() : null,
                 belt: this.inventory.belt ? this.inventory.belt.toJSON() : null
             },
+            fish_list: this.fishList.map(fish => fish ? fish.toJSON() : null),
         }
         // console.log("Player to JSON: ", JSON);
         return JSON;
@@ -178,6 +181,12 @@ export class Player {
                 ring2: doc.inventory.ring2 ? Item.fromJSON(doc.inventory.ring2) : null,
                 belt: doc.inventory.belt ? Item.fromJSON(doc.inventory.belt): null
             }
+        }
+
+        if (doc.fish_list) {
+            player.fishList = doc.fish_list.map(
+                fishData => Fish.fromJSON(fishData)
+            )
         }
 
         return player;
@@ -229,6 +238,12 @@ export class Player {
                         label: 'Inventory',
                         style: ButtonStyleTypes.PRIMARY,
                     },
+                    {
+                        type: MessageComponentTypes.BUTTON,
+                        custom_id: `fish_list_${userID}`,
+                        label: 'Fish Barrel',
+                        style: ButtonStyleTypes.PRIMARY,
+                    },
                 ]
             }
         ]
@@ -275,6 +290,117 @@ export class Player {
                     }
                 )
             }
+        }
+
+        return componentList;
+    }
+
+    showFish() {
+        let componentList = [
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `## 🐠 ${this.username}'s Fish Barrel`
+            }
+        ];
+
+        this.fishList.forEach((fish) => {
+            componentList.push(
+                {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `### ${fish.fishName}`
+                },
+            );
+
+            componentList.push(
+                {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `Weight: ${fish.weight} lbs (${fish.getWeightPercentageString()})`
+                },
+            );
+
+            componentList.push(
+                {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `Valued at: ${fish.value} gold`
+                },
+            );
+        });
+
+        return componentList;
+    }
+
+    getFishOptions() {
+        let options = [];
+
+        for (let i = 0; i < this.fishList.length; i++)
+        {
+            options.push( 
+                {
+                    label: this.fishList[i].getShortenedDetails(),
+                    value: i,
+                }
+            )
+        }
+
+        return options;
+    }
+
+    showInventory() {
+        let componentList = [
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `## 🧰 ${this.username}'s Inventory`
+            }
+        ];
+
+        if (this.inventory.staff) {
+            componentList = componentList.concat(this.inventory.staff.toComponent());
+            componentList = componentList.concat(
+                {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                }
+            );
+        }
+
+        if (this.inventory.amulet) {
+            componentList = componentList.concat(this.inventory.amulet.toComponent());
+            componentList = componentList.concat(
+                {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                }
+            );
+        }
+        
+        if (this.inventory.ring1) {
+            componentList = componentList.concat(this.inventory.ring1.toComponent());
+            componentList = componentList.concat(
+                {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                }
+            );
+        }
+        
+        if (this.inventory.ring2) {
+            componentList = componentList.concat(this.inventory.ring2.toComponent());
+            componentList = componentList.concat(
+                {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                }
+            );
+        }
+        
+        if (this.inventory.belt) {
+            componentList = componentList.concat(this.inventory.belt.toComponent());
+            componentList = componentList.concat(
+                {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                }
+            );
         }
 
         return componentList;
@@ -476,66 +602,5 @@ export class Player {
             [increasedProjectileCritChance, addedProjectileCritDamage],
             [increasedAreaCritChance, addedAreaCritDamage],
         ];
-    }
-
-    showInventory() {
-        let componentList = [
-            {
-                type: MessageComponentTypes.TEXT_DISPLAY,
-                content: `## 🧰 ${this.username}'s Inventory`
-            }
-        ];
-
-        if (this.inventory.staff) {
-            componentList = componentList.concat(this.inventory.staff.toComponent());
-            componentList = componentList.concat(
-                {
-                    type: MessageComponentTypes.SEPARATOR,
-                    spacing: 1,
-                }
-            );
-        }
-
-        if (this.inventory.amulet) {
-            componentList = componentList.concat(this.inventory.amulet.toComponent());
-            componentList = componentList.concat(
-                {
-                    type: MessageComponentTypes.SEPARATOR,
-                    spacing: 1,
-                }
-            );
-        }
-        
-        if (this.inventory.ring1) {
-            componentList = componentList.concat(this.inventory.ring1.toComponent());
-            componentList = componentList.concat(
-                {
-                    type: MessageComponentTypes.SEPARATOR,
-                    spacing: 1,
-                }
-            );
-        }
-        
-        if (this.inventory.ring2) {
-            componentList = componentList.concat(this.inventory.ring2.toComponent());
-            componentList = componentList.concat(
-                {
-                    type: MessageComponentTypes.SEPARATOR,
-                    spacing: 1,
-                }
-            );
-        }
-        
-        if (this.inventory.belt) {
-            componentList = componentList.concat(this.inventory.belt.toComponent());
-            componentList = componentList.concat(
-                {
-                    type: MessageComponentTypes.SEPARATOR,
-                    spacing: 1,
-                }
-            );
-        }
-
-        return componentList;
     }
 }

@@ -29,6 +29,8 @@ import { randomUUID } from "crypto";
 import { chance } from './chance.js';
 import { WikiDB } from './wikiDB.js';
 import { Arena } from './arena.js';
+import { FishDB } from './fishDB.js';
+import { Fish } from './fish.js';
 
 // Create an express app
 const app = express();
@@ -53,10 +55,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     return res.send({ type: InteractionResponseType.PONG });
   }
 
-  /**
-   * Handle slash command requests
-   * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
-   */
+  // ====================================
+  // Slash command request handling
+  // ====================================
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
@@ -378,11 +379,198 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       });
     }
 
+    if (name === 'fish') {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+
+      let playerExists = await hasPlayer(userID);
+      if (playerExists === true) {
+        let randomDelay = Math.floor(Math.random() * 3000) + 3000;
+
+        try {
+          setTimeout(async () => {
+            try {
+              await DiscordRequest(endpoint, {
+                method: 'PATCH',
+                body: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0x069494,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `## 🎣 Fishing`,
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: "Press the button when the square turns green to catch a fish!",
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `🟥🟥🟥\n🟥🟥🟥\n🟥🟥🟥`,
+                        },
+                        {
+                          type: MessageComponentTypes.ACTION_ROW,
+                          components: [
+                            {
+                              type: MessageComponentTypes.BUTTON,
+                              label: 'Reel',
+                              style: ButtonStyleTypes.PRIMARY,
+                              custom_id: `fishing_${userID}_failed`,
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              });
+            } catch (err) {
+              console.error("Timeout error: " + err);
+            }
+          }, 50);
+
+          setTimeout(async () => {
+            try {
+              await DiscordRequest(endpoint, {
+                method: 'PATCH',
+                body: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0x069494,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `## 🎣 Fishing`,
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: "Press the button when the square turns green to catch a fish!",
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `🟩🟩🟩\n🟩🟩🟩\n🟩🟩🟩`,
+                        },
+                        {
+                          type: MessageComponentTypes.ACTION_ROW,
+                          components: [
+                            {
+                              type: MessageComponentTypes.BUTTON,
+                              label: 'Reel',
+                              style: ButtonStyleTypes.PRIMARY,
+                              custom_id: `fishing_${userID}_succeed`,
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              });
+            } catch (err) {
+              console.error("Timeout error: " + err);
+            }
+          }, randomDelay);
+
+          setTimeout(async () => {
+            try {
+              await DiscordRequest(endpoint, {
+                method: 'PATCH',
+                body: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: 0x069494,
+                      components: [
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `## 🎣 Fishing`,
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: "Press the button when the square turns green to catch a fish!",
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `🟥🟥🟥\n🟥🟥🟥\n🟥🟥🟥`,
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: 'Fishing encounter failed!'
+                        }
+                      ]
+                    }
+                  ]
+                }
+              });
+            } catch (err) {
+              console.error("Timeout error: " + err);
+            }
+          }, randomDelay + 800);
+
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  accent_color: 0x069494,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `## 🎣 Fishing`,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: "Press the button when the square turns green to catch a fish!",
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `🟥🟥🟥\n🟥🟥🟥\n🟥🟥🟥`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: 'Reel',
+                          style: ButtonStyleTypes.PRIMARY,
+                          custom_id: `fishing_${userID}_failed`,
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        } catch (err) {
+          console.log("Error sending response: ", err);
+        }
+      }
+      else {
+        try {
+          return getWizardMissingResponse(res);
+        } catch (err) {
+          console.error("Error sending response: ", err);
+        }
+      }
+    }
+
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
   }
 
+  // ====================================
   // Message component response handling
+  // ====================================
   if (type === InteractionType.MESSAGE_COMPONENT) {
     const componentID = data.custom_id;
 
@@ -655,6 +843,48 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error(`Error sending message: `, err);
       }
     }
+    else if (componentID.startsWith('fish_list_')) {
+      const context = req.body.context;
+      const userID = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      let player = await loadPlayer(userID);
+      let componentList = player.showFish().concat([
+        {
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+                type: MessageComponentTypes.BUTTON,
+                custom_id: `back_to_wizard_${userID}`,
+                label: 'Back',
+                style: ButtonStyleTypes.PRIMARY,
+            }
+          ]
+        }
+      ]);
+
+      try {
+        await res.send({
+          type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE
+        });
+
+        await DiscordRequest(endpoint, {
+          method: 'PATCH',
+          body: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.CONTAINER,
+                accent_color: 108000,
+                components: componentList,
+              },
+            ]
+          }
+        });
+      } catch (err) {
+        console.error(`Error sending message: `, err);
+      }
+    }
     else if (componentID.startsWith('back_to_wizard_')) {
       const context = req.body.context;
       const userID = componentID.split('_')[3];
@@ -755,6 +985,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                         {
                           type: MessageComponentTypes.TEXT_DISPLAY,
                           content: `${enemy.enemyName} dropped ${results.goldGained} gold`,
+                        },
+                        {
+                          type: MessageComponentTypes.SEPARATOR,
+                          spacing: 1
+                        },
+                        {
+                          type: MessageComponentTypes.TEXT_DISPLAY,
+                          content: `${player.username} now has ${player.gold} gold`,
                         },
                       ]
                     }
@@ -1459,11 +1697,296 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
       }
     }
+    else if (componentID.startsWith('fishing_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const fisherID = componentID.split('_')[1];
+      const result = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      try {
+        if (userID === fisherID) {
+          const fish = FishDB.getRandomFish();
+
+          if (result === 'succeed') {
+            await res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0x069494,
+                    components: [
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: "## 🐟 Fishing Success!",
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `<@${userID}> caught a ${fish.fishName}`
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `Weight: ${fish.weight} lbs (${fish.getWeightPercentageString()})`
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `Value: ${fish.value} gold`,
+                      },
+                      {
+                        type: MessageComponentTypes.ACTION_ROW,
+                        components: [
+                          {
+                            type: MessageComponentTypes.BUTTON,
+                            style: ButtonStyleTypes.PRIMARY,
+                            label: 'Sell',
+                            custom_id: `sell_fish_${userID}_${fish.value}`
+                          },
+                          {
+                            type: MessageComponentTypes.BUTTON,
+                            style: ButtonStyleTypes.PRIMARY,
+                            label: 'Keep',
+                            custom_id: `keep_fish_${userID}_${fish.fishID}_${fish.fishRarity}_${fish.weight}_${fish.value}`
+                          },
+                        ]
+                      }
+                    ]
+                  },  
+                ]
+              }
+            })
+          }
+          else {
+            await res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `Better luck next time! The ${fish.fishName} escaped!`
+                  }
+                ]
+              }
+            });
+          }
+
+          await DiscordRequest(endpoint, {
+            method: 'DELETE',
+          });
+        }
+        else {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: "This ain't your fish, buckaroo",
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error sending message: ', err);
+      }
+    }
+    else if (componentID.startsWith('sell_fish_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const fisherID = componentID.split('_')[2];
+      const fishValue = componentID.split('_')[3];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      if (fisherID === userID) {
+        let player = await loadPlayer(userID);
+
+        player.gold += Number(fishValue);
+
+        await res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `Fish has been sold for ${fishValue}!`
+              },
+              {
+                type: MessageComponentTypes.SEPARATOR,
+                spacing: 1,
+              },
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `${player.username} now has ${player.gold} gold`
+              }
+            ]
+          }
+        });
+
+        await DiscordRequest(endpoint, {
+          method: 'DELETE',
+        });
+
+        await savePlayer(player);
+      } 
+      else {
+        await res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: "This ain't your fish, buckaroo",
+              }
+            ]
+          }
+        });
+      }
+    }
+    else if (componentID.startsWith('keep_fish_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const fisherID = componentID.split('_')[2];
+      const fishID = componentID.split('_')[3];
+      const fishRarity = componentID.split('_')[4];
+      const fishWeight = Number(componentID.split('_')[5]);
+      const fishValue = Number(componentID.split('_')[6]);
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      if (fisherID === userID) {
+        let player = await loadPlayer(userID);
+        let fish = Fish.copyFish(FishDB.fishListDict[fishRarity][fishID]);
+        fish.weight = fishWeight;
+        fish.value = fishValue;
+
+        if (player.fishList.length >= 10) {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: 'Fish Caught:',
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `${fish.getShortenedDetails()}`,
+                },
+                {
+                  type: MessageComponentTypes.SEPARATOR,
+                  spacing: 1,
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: 'You have too many fish in your barrel, which fish would you like to swap out?',
+                },
+                {
+                  type: MessageComponentTypes.ACTION_ROW,
+                  components: [
+                    {
+                      type: MessageComponentTypes.STRING_SELECT,
+                      placeholder: "Select a fish",
+                      custom_id: `fish_select_${fishID}_${fishRarity}_${fishWeight}_${fishValue}`,
+                      options: player.getFishOptions(),
+                    }
+                  ]
+                }
+              ]
+            }
+          })
+        } 
+        else {
+          player.fishList.push(fish);
+
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `Added ${fish.fishName} to ${player.username}'s fish barrel!`
+                },
+              ]
+            }
+          });
+        }
+
+        await DiscordRequest(endpoint, {
+          method: 'DELETE',
+        });
+
+        await savePlayer(player);
+      } 
+      else {
+        await res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: "This ain't your fish, buckaroo",
+              }
+            ]
+          }
+        });
+      }
+    }
+    else if (componentID.startsWith('fish_select_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const fishID = componentID.split('_')[2];
+      const fishRarity = componentID.split('_')[3];
+      const fishWeight = Number(componentID.split('_')[4]);
+      const fishValue = Number(componentID.split('_')[5]);
+      const swapIndex = req.body.data.values[0];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      let player = await loadPlayer(userID);
+      
+      try {
+        let fish = Fish.copyFish(FishDB.fishListDict[fishRarity][fishID]);
+        fish.weight = fishWeight;
+        fish.value = fishValue;
+
+        player.fishList.splice(swapIndex, 1, fish);
+
+        await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `Added ${fish.fishName} to ${player.username}'s fish barrel!`
+                },
+              ]
+            }
+          });
+
+        await DiscordRequest(endpoint, {
+          method: "DELETE",
+        })
+
+        await savePlayer(player);
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
 
     return;
   }
 
-  // Modal submission response handling 
+  // ====================================
+  // Modal component submission handling
+  // ====================================
   if (type === InteractionType.MODAL_SUBMIT) {
     const context = req.body.context;
     const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
@@ -1492,11 +2015,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   return res.status(400).json({ error: 'unknown interaction type' });
 });
 
+// Set up listening port
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);
 });
 
 
+// Helper function to display a message showing user that 
+// the user inquired does not have a wizard set up
 function getWizardMissingResponse(res) {
   return res.send({
     type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,

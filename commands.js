@@ -11,6 +11,8 @@ const TEST_COMMAND = {
 };
 
 // Start wizardry journey
+// User will have a modal pop up prompting them to 
+// name their wizard if necessary
 const START_COMMAND = {
   name: 'start',
   description: 'Start your wizardry adventure!',
@@ -19,6 +21,9 @@ const START_COMMAND = {
   contexts: [0, 1, 2],
 };
 
+// Start an arena
+// Users with wizards can join the arena 
+// Wizards fight each other in a battle-royale style arena
 const ARENA_COMMAND = {
   name: 'arena',
   description: 'Start a grand wizardry fight',
@@ -27,6 +32,11 @@ const ARENA_COMMAND = {
   contexts: [0, 2],
 };
 
+// View a wizard
+// View a wizard and their details such as spells
+// Currently can view spells, inventory, and fish barrel
+// If no parameter, view the wizard of the user who 
+// used the command
 const WIZARD_COMMAND = {
   name: 'wizard',
   description: 'View a wizard and their gear',
@@ -43,6 +53,9 @@ const WIZARD_COMMAND = {
   contexts: [0, 1, 2],
 }
 
+// Embark on an adventure
+// Fight an enemy
+// Win and you gain gold, lose and you gain nothing
 const ADVENTURE_COMMAND = {
   name: 'adventure',
   description: 'Take a wild leap into the woods',
@@ -51,6 +64,9 @@ const ADVENTURE_COMMAND = {
   contexts: [0, 2],
 }
 
+// Open the shop
+// Buy lootboxes at the shop for 500 gold
+// Other users can also buy at the same shop
 const SHOP_COMMAND = {
   name: 'shop',
   description: 'Purchase loot chests to upgrade your wizard!',
@@ -59,6 +75,9 @@ const SHOP_COMMAND = {
   contexts: [0, 2],
 }
 
+// Challenge a wizard to a duel
+// Start a 1v1 against another wizard
+// Other user has to accept prompt first
 const DUEL_COMMAND = {
   name: 'duel',
   description: 'Challenge another wizard to a duel!',
@@ -75,6 +94,9 @@ const DUEL_COMMAND = {
   contexts: [0, 2],
 }
 
+// Get information on mechanics
+// Read about mechanics present in Wiz
+// Parameter required to know which entry to view
 const WIKI_COMMAND = {
   name: 'wiki',
   description: 'Learn more about mechanics in Wiz',
@@ -125,6 +147,17 @@ const WIKI_COMMAND = {
   contexts: [0, 1, 2],
 }
 
+// Fishing minigame
+// Test your reaction time with a simple square diagram
+// Sell or keep the fish
+const FISH_COMMAND = {
+  name: 'fish',
+  description: 'Test your luck and reflexes fishing in a nearby pond',
+  type: 1,
+  integration_types: [0, 1],
+  contexts:[0, 2],
+}
+
 const ALL_COMMANDS = [
   TEST_COMMAND, 
   START_COMMAND, 
@@ -134,6 +167,7 @@ const ALL_COMMANDS = [
   SHOP_COMMAND,
   DUEL_COMMAND,
   WIKI_COMMAND,
+  FISH_COMMAND,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

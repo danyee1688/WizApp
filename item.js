@@ -80,8 +80,6 @@ export class Item {
             }
         }
 
-        console.log(stats);
-
         return stats;
     }
 

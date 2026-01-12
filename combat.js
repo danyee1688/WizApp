@@ -2,6 +2,7 @@ import { Enemy } from './enemy.js';
 import { Player } from './player.js';
 import { chance } from './chance.js';
 
+// Start battle between a player and non-player enemy
 export async function battle(player, enemy) {
     while (player.health > 0 && enemy.enemyHealth > 0) {
         playerTurn(player, enemy);
@@ -26,18 +27,20 @@ export async function battle(player, enemy) {
     }
 }
 
+// Start battle between two players from /duel
 export async function duel(player, opponent) {
     while (player.health > 0 && opponent.health > 0) {
         playerTurn(player, opponent);
         playerTurn(opponent, player);
     }
 
-    // If player loses
+    // Tie outcome
     if (player.health <= 0 && opponent.health <= 0) {
         return {
             victory: "uncertain",
         }
     }
+    // If player loses
     else if (player.health <= 0) {
         return {
             victory: false,
@@ -51,6 +54,7 @@ export async function duel(player, opponent) {
     }
 }
 
+// Player turn during combat, choose spell and apply damage
 export function playerTurn(player, enemy) {
     let spell = player.getRandomSpell();
 
@@ -60,12 +64,14 @@ export function playerTurn(player, enemy) {
     enemy.takeDamage(calculateDamage(player, spell).damage);
 }
 
+// Non-player enemy turn during combat, apply damage
 function enemyTurn(player, enemy) {
     console.log('Enemy Turn');
 
     player.takeDamage(enemy.enemyDamage);
 }
 
+// Calculate gold gain from killing a non-player enemy
 function calcGoldGain(enemy) {
     let range = [100 * Math.pow(2, enemy.enemyTier), 100 * Math.pow(2, enemy.enemyTier + 1)]
 
@@ -74,6 +80,9 @@ function calcGoldGain(enemy) {
     return value;
 }
 
+// Calculate damage done by a spell
+// Returns whether or not the damage done was a critical hit
+// Returns an array of damage types: scorch, volt, freeze
 export function calculateDamage(player, spell) {
     let [scorchDam, voltDam, freezeDam] = spell.baseDamage;
     const [
@@ -89,6 +98,7 @@ export function calculateDamage(player, spell) {
     // Increases to damage first, 
     // then multiplicatively apply increases to damage from critting, if applicable
 
+    // Critical hit calculations
     let critResult = critChanceCheck(player, spell);
     let critDamage = calculateCritMultiplier(player, spell);
 
@@ -117,6 +127,7 @@ export function calculateDamage(player, spell) {
     };
 }
 
+// Additive increases for modifiers that increase damage
 function calculateTagIncreases(player, spell, baseIncrease) {
     const [
         incDam,
@@ -147,6 +158,7 @@ function calculateTagIncreases(player, spell, baseIncrease) {
     return totalIncrease;
 }
 
+// Returns boolean after calculating critical hit chance 
 function critChanceCheck(player, spell) {
     const baseCritChance = spell.critChance;
     let totalIncCritChance = 0;
@@ -194,6 +206,7 @@ function critChanceCheck(player, spell) {
     }
 }
 
+// Additive critical hit damage calculations
 function calculateCritMultiplier(player, spell) {
     const baseCritDamage = spell.critDamage;
     let totalAddedCritDamage = 0;
@@ -231,9 +244,12 @@ function calculateCritMultiplier(player, spell) {
         }
     })
 
+    // - 100 for padding, crit damage technically starts at 0
+    // but is set at 100+ for visual purposes
     return baseCritDamage - 100 + totalAddedCritDamage;
 }
 
+// Simple percentage increase helper function
 function calculatePercentageIncrease(value, percentage) {
     return Math.floor(value * (1 + (percentage / 100)));
 }
