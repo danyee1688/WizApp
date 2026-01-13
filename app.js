@@ -1082,10 +1082,16 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   type: MessageComponentTypes.ACTION_ROW,
                   components: [
                     {
-                    type: MessageComponentTypes.BUTTON,
-                    label: "Take and equip",
-                    custom_id: `take_loot_${userID}_${itemID}`,
-                    style: ButtonStyleTypes.PRIMARY,
+                      type: MessageComponentTypes.BUTTON,
+                      label: "Take and equip",
+                      custom_id: `take_loot_${userID}_${itemID}`,
+                      style: ButtonStyleTypes.PRIMARY,
+                    },
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      label: "Dismiss",
+                      custom_id: `dismiss_message_${userID}`,
+                      style: ButtonStyleTypes.SECONDARY,
                     }
                   ]
                 }
@@ -1127,8 +1133,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                       {
                         type: MessageComponentTypes.BUTTON,
                         label: "Learn Spell",
-                        custom_id: `learn_spell_${userID}_${spell.spellID}`,
+                        custom_id: `learn_spell_${userID}_${spell.spellID}_${spell.tier - 1}`, // Convert to zero based
                         style: ButtonStyleTypes.PRIMARY,
+                      },
+                      {
+                        type: MessageComponentTypes.BUTTON,
+                        label: "Dismiss",
+                        custom_id: `dismiss_message_${userID}`,
+                        style: ButtonStyleTypes.SECONDARY,
                       }
                     ]
                   }
@@ -1394,7 +1406,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userID = componentID.split('_')[2];
       const lootUserID = context === 0 ? req.body.member.user.id : req.body.user.id;
       const spellID = componentID.split('_')[3];
-      const spell = SpellDB.spellList[spellID];
+      const spellTier = componentID.split('_')[4];
+      const spell = SpellDB.spellList[spellID][spellTier];
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
       // Check if user pressing button is the same as the one who dropped the loot
@@ -1429,19 +1442,19 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                             type: MessageComponentTypes.BUTTON,
                             style: ButtonStyleTypes.SECONDARY,
                             label: `1 - ${player.getSpellName(0)}`,
-                            custom_id: `equip_spell_1_${spellID}`
+                            custom_id: `equip_spell_1_${spellID}_${spellTier}`
                           },
                           {
                             type: MessageComponentTypes.BUTTON,
                             style: ButtonStyleTypes.SECONDARY,
                             label: `2 - ${player.getSpellName(1)}`,
-                            custom_id: `equip_spell_2_${spellID}`
+                            custom_id: `equip_spell_2_${spellID}_${spellTier}`
                           },
                           {
                             type: MessageComponentTypes.BUTTON,
                             style: ButtonStyleTypes.SECONDARY,
                             label: `3 - ${player.getSpellName(2)}`,
-                            custom_id: `equip_spell_3_${spellID}`
+                            custom_id: `equip_spell_3_${spellID}_${spellTier}`
                           },
                         ]
                       }
@@ -1486,7 +1499,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
       const spellSlot = componentID.split('_')[2];
       const spellID = componentID.split('_')[3];
-      const spell = SpellDB.spellList[spellID];
+      const spellTier = componentID.split('_')[4];
+      const spell = SpellDB.spellList[spellID][spellTier];
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
 
       const playerExists = await hasPlayer(userID);
@@ -1978,6 +1992,44 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         await savePlayer(player);
       } catch (err) {
         console.error("Error sending message: ", err);
+      }
+    }
+    else if (componentID.startsWith('dismiss_message_')) {
+      const context = req.body.context;
+      const dismisserID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const userID = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      if (userID === dismisserID) {
+        try {
+          await res.send({
+            type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
+          });
+
+          await DiscordRequest(endpoint, {
+            method: "DELETE",
+          });
+        } catch (err) {
+          console.error("Error sending message: ", err);
+        }
+      }
+      else {
+        try {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: 'You cannot dismiss this message',
+                }
+              ]
+            }
+          });
+        } catch (err) {
+          console.error("Error sending message", err);
+        }
       }
     }
 

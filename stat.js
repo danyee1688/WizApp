@@ -11,7 +11,7 @@ export class Stat {
 
     getParsedDescription() {
         // Replace hashtag with corresponding value in stat
-        let description = this.description.replace("#", this.value.toString());
+        let description = `[T${this.tier + 1}] ` + this.description.replace("#", this.value.toString());
         //console.log(`stat ${this.statID} description parsed into: `, description);
         return description; 
     }

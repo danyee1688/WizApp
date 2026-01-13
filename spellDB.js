@@ -231,7 +231,7 @@ export class SpellDB {
             ),
         ],
         5: [
-            new Spell(4, 1, "Incendiary Thunder", 
+            new Spell(5, 1, "Incendiary Thunder", 
                 [15, 25, 0],
                 15, 150,
                 [
@@ -240,7 +240,7 @@ export class SpellDB {
                     "Area",
                 ]
             ),
-            new Spell(4, 2, "Incendiary Thunder", 
+            new Spell(5, 2, "Incendiary Thunder", 
                 [15, 30, 0],
                 15, 150,
                 [
@@ -258,7 +258,7 @@ export class SpellDB {
                     "Area",
                 ]
             ),
-            new Spell(4, 4, "Incendiary Thunder", 
+            new Spell(5, 4, "Incendiary Thunder", 
                 [20, 36, 0],
                 15, 150,
                 [
@@ -267,7 +267,7 @@ export class SpellDB {
                     "Area",
                 ]
             ),
-            new Spell(4, 5, "Incendiary Thunder", 
+            new Spell(5, 5, "Incendiary Thunder", 
                 [26, 36, 0],
                 15, 150,
                 [
@@ -300,15 +300,11 @@ export class SpellDB {
 
     // Get random spell (weighted for tiers)
     static getRandomSpell(blacklist) {
-        console.log(`getRandonSpell() debug`);
-
         let validSpellIDs = [];
         let blacklistFiltered = blacklist.filter(spell => spell != null);
 
         // Loop through spell list and get valid spell IDs
         for (let i = 0; i < Object.keys(this.spellList).length; i++) {
-            console.log(`i: ${i}`)
-
             let found = false;
 
             blacklistFiltered.forEach((spell) => {
@@ -318,7 +314,6 @@ export class SpellDB {
             });
 
             if (found === false) {
-                console.log(`pushed i`);
                 validSpellIDs.push(i);
             }
         }
