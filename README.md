@@ -26,4 +26,9 @@ Start an arena for many wizards to join and fight each other in pure chaos.
 _Parameter: entry_ <br/>
 Look up information about a certain mechanic in Wiz. 
 
--# Created by Daniel Yee
+### Fish
+Cast your fishing rod into a nearby pond. Your reflexes count in this fishing minigame.
+
+
+
+Created by Daniel Yee
