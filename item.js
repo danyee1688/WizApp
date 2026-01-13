@@ -7,6 +7,7 @@ import {
 } from "discord-interactions";
 
 export class Item {
+    // Enum for type
     static ITEM_TYPE = {
         Staff: 0,
         Amulet: 1,
@@ -14,6 +15,7 @@ export class Item {
         Belt: 3,
     }
 
+    // Enum for rarity
     static ITEM_RARITY = {
         Common: 0,
         Rare: 1,
@@ -28,6 +30,7 @@ export class Item {
         this.itemName = ItemHelper.generateName(this.itemType, this.stats);
     }
 
+    // Returns string for display
     typeToString() {
         switch (this.itemType) {
             case 0:
@@ -41,6 +44,7 @@ export class Item {
         }
     }
 
+    // Returns string for display
     rarityToString() {
         switch (this.itemRarity) {
             case 0:
@@ -54,6 +58,7 @@ export class Item {
         }
     }
 
+    // Return color for containers or other use
     rarityToColor() {
         switch (this.itemRarity) {
             case 0:
@@ -67,11 +72,13 @@ export class Item {
         }
     }
 
+    // Roll stats for item
     rollStats() {
         let numStats = ItemHelper.getNumRolls(this.itemRarity);
 
         let stats = [];
 
+        // Grab random stat from DB if allowed
         for (let i = 0; i < numStats; i++) {
             let stat = StatDB.getRandomStat(stats, this.itemType, this.itemRarity);
 
@@ -83,6 +90,7 @@ export class Item {
         return stats;
     }
 
+    // Returns item's stats as a string for display
     statsToString() {
         let retVal = "";
 
@@ -93,6 +101,7 @@ export class Item {
         return retVal;
     }
 
+    // Converts object to component for discord messages
     toComponent() {
         return [
             {
@@ -110,6 +119,7 @@ export class Item {
         ]
     }
 
+    // Convert object to JSON
     toJSON() {
         return {
             itemName: this.itemName,
@@ -119,6 +129,7 @@ export class Item {
         };
     }
 
+    // Convert JSON to object
     static fromJSON(data) {
         let item = new Item(data.itemType, data.itemRarity);
         item.itemType = data.itemType;

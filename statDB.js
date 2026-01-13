@@ -481,21 +481,20 @@ export class StatDB {
         3: [0, 20, 80],
     }
 
+    // Returns copied stat
+    // Avoids persistent changes to objects in stat lists
     static copyStat(stat) {
         let tempStat = new Stat(stat.statID, stat.statName, stat.description, stat.ranges, stat.allowedOnTypes);
 
         return tempStat;
     }
 
+    // Grab random stat, weighted by item rarity
     static getRandomStat(blacklist, itemType, itemRarity) {
         let [filteredStatList, filteredWeightList] = this.filterStats(this.statListList[itemType], this.statWeightList[itemType], blacklist);
         let stat = null;
 
         if (filteredStatList.length > 0) {
-            // console.log('item type : ' + itemType);
-            // console.log('item rarity: ' + itemRarity);
-            // console.log('stat list: ' + filteredStatList);
-            // console.log('stat list weights: ' + filteredWeightList);
             stat = this.copyStat(weightedChoice(filteredStatList, filteredWeightList));
             stat.tier = weightedChoice(this.statTiers, this.statTierWeights[itemRarity]);
             
@@ -503,11 +502,6 @@ export class StatDB {
             const max = stat.ranges[stat.tier][1];
             
             stat.value = Math.floor(Math.random() * (max - min + 1)) + min;
-            // console.log('min roll: ' + min);
-            // console.log('max roll', max);
-            // console.log('value: ', stat.value);
-            // console.log('stat generated: ');
-            // console.log(stat);
         }
 
         return stat;

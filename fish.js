@@ -8,6 +8,8 @@ export class Fish {
         this.value = this.getValue();
     }
 
+    // Rolls the weight of the fish depending on ranges provided
+    // Has 3 decimal places of precision
     rollWeight(weightRolls) {
         let min = weightRolls[0];
         let max = weightRolls[1];
@@ -20,15 +22,20 @@ export class Fish {
         return value;
     }
 
+    // Copy a fish
+    // Prevents persistent changes to objects
     static copyFish(fish) {
         return new Fish(fish.fishID, fish.fishName, fish.fishRarity, fish.weightRolls);
     }
 
+    // Get fish value
+    // Calculated based on rarity and weight
     getValue() {
         let fishRarityMultiplier = 1;
         let fishWeightMultiplier = (this.weight / this.weightRolls[1]) ** 2;
         let baseValue = Math.floor(Math.random() * 100) + 50;
 
+        // Exponential multiplier additions
         switch (this.fishRarity) {
             case "Common":
                 fishRarityMultiplier = 1;
@@ -46,23 +53,29 @@ export class Fish {
                 break;
         }
 
+        // Rarity and weight multipliers are additive
         return Math.floor(baseValue * (fishRarityMultiplier + fishWeightMultiplier));
     }
 
+    // Get fish details as a string for display
     getShortenedDetails() {
         return `${this.fishName} [${this.weight} lbs (${this.getWeightPercentageString()})] - valued at ${this.value} gold`;
     }
 
+    // Get raw fish details as a string for internal use
     getDetails() {
         return `${this.fishID}_${this.fishRarity}_${this.weight}`;
     }
 
+    // Get fish weight as a percentage, bounded by 
+    // fish's weight rolls
     getWeightPercentageString() {
         let weightPercentage = Math.floor(((this.weight - this.weightRolls[0])/(this.weightRolls[1] - this.weightRolls[0])) * 10000) / 100;
 
         return `${weightPercentage}%`;
     }
 
+    // Convert object to JSON
     toJSON() {
         return {
             _id: this.fishID,
@@ -74,6 +87,7 @@ export class Fish {
         }
     }
 
+    // Convert JSON to object
     static fromJSON(data) {
         let fish = new Fish(data._id, data.fish_name, data.fish_rarity, data.weight_rolls);
         fish.weight = data.weight;

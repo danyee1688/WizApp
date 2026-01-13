@@ -45,6 +45,7 @@ const PlayerSchema = new mongoose.Schema({
 
 export const PlayerModel = mongoose.model("Player", PlayerSchema);
 
+// Connect to DB by URI
 export async function connectToDB() {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
@@ -55,6 +56,7 @@ export async function connectToDB() {
     }
 }
 
+// Saves player to DB
 export async function savePlayer(player) {
     console.log("Saving player ", player.userID);
 
@@ -65,6 +67,7 @@ export async function savePlayer(player) {
     )
 }
 
+// Loads player from DB
 export async function loadPlayer(userID) {
     const doc = await PlayerModel.findById(userID).lean();
 
@@ -74,6 +77,8 @@ export async function loadPlayer(userID) {
     return player;
 }
 
+// Returns boolean based on whether or not player exists in DB
+// Checks by discord user ID
 export async function hasPlayer(userID) {
     console.log(`Finding user ${userID}`);
 

@@ -17,3 +17,6 @@ yarn-error.log*
 # Build output
 dist/
 build/
+
+# Getting Started README.md
+DiscordGettingStarted.md

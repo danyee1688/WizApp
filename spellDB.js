@@ -292,6 +292,8 @@ export class SpellDB {
         1
     ]
 
+    // Get one of the first 3 spells in spell list for
+    // wizard initialization
     static getStartingSpell() {
         let spell =  this.spellList[Math.floor(Math.random() * 3)][0];
 
@@ -325,12 +327,13 @@ export class SpellDB {
         return this.spellList[randomSpellID][randomTier];
     }
 
+    // Returns string of spells for display purposes
     static convertSpellListToString(spellList) {
         let string = "";
         let spellListTemp = spellList.filter(spell => spell != null);
 
         for (let i = 0; i < spellListTemp.length; i++) {
-            string += spellListTemp[i].getName();
+            string += spellListTemp[i].spellName;
 
             if (i != spellListTemp.length - 1 && spellListTemp.length != 1) {
                 string += ", ";
@@ -340,6 +343,7 @@ export class SpellDB {
         return string;
     }
 
+    // Returns a spell's description for display purposes
     static getSpellDescription(spell) {
         let string = '[MISSING DESCRIPTION]'
 

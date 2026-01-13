@@ -9,13 +9,15 @@ export class Stat {
         this.allowedOnTypes = allowedOnTypes;
     }
 
+    // Returns parsed description with value
     getParsedDescription() {
         // Replace hashtag with corresponding value in stat
         let description = `[T${this.tier + 1}] ` + this.description.replace("#", this.value.toString());
-        //console.log(`stat ${this.statID} description parsed into: `, description);
+        
         return description; 
     }
 
+    // Convert object to JSON
     toJSON() {
         return {
             statID: this.statID,
@@ -28,6 +30,7 @@ export class Stat {
         }
     }
 
+    // Convert JSON to object
     static fromJSON(data) {
         let stat =  new Stat(data.statID, data.statName, data.description, data.ranges, data.allowedOnTypes);
         stat.tier = data.tier;

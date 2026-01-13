@@ -74,6 +74,7 @@ export class FishDB {
         ),
     ]
 
+    // List of fish lists for indexing purposes
     static fishListList = [
         this.commonFishList,
         this.rareFishList,
@@ -81,6 +82,7 @@ export class FishDB {
         this.legendaryFishList,
     ]
 
+    // Dictionary of fish lists for indexing purposes
     static fishListDict = {
         "Common": this.commonFishList,
         "Rare": this.rareFishList,
@@ -95,7 +97,7 @@ export class FishDB {
         1,
     ]
 
-    // Get a random fish, weighted with rarity
+    // Get a random fish, weighted by rarity
     static getRandomFish() {
         let list = weightedChoice(this.fishListList, this.fishRarityWeights);
 

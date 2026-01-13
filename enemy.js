@@ -14,13 +14,17 @@ export class Enemy {
         this.enemyResistances = enemyResistances;
     }
 
+    // Get emojified string representing entity's elemental resistances
     getResistanceString() {
         return `🔥 ${this.enemyResistances[0]} | ⚡ ${this.enemyResistances[1]} | ❄️ ${this.enemyResistances[2]}`;
     }
+
+    // Get emojified string representing entity's damage
     getDamageString() {
         return `🔥 ${this.enemyDamage[0]} | ⚡ ${this.enemyDamage[1]} | ❄️ ${this.enemyDamage[2]}`;
     }
 
+    // Calculate damage done to entity
     takeDamage(amount) {
         let [scorchDam, voltDam, freezeDam] = amount;
         let [scorchRes, voltRes, freezeRes] = this.enemyResistances;
@@ -36,6 +40,7 @@ export class Enemy {
         console.log(`- ${this.enemyName} took ${totalDam} damage`);
     }
 
+    // Convert entity to component for discord messages
     showEnemy(userID, fightEnabled) {
         let componentList = [];
 

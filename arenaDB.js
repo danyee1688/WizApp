@@ -32,6 +32,8 @@ export class ArenaDB {
         "<target> gets pummeled by <spell>, used by <caster>",
     ]
 
+    // Grab random message from misc message list
+    // Substitute in player name from parameters
     static getRandomMiscMessage(playerName) {
         let randomIndex = Math.floor(Math.random() * this.miscMessages.length);
         let message = this.miscMessages[randomIndex];
@@ -40,6 +42,10 @@ export class ArenaDB {
         return message;
     }
 
+    // Grab random message from combat message list
+    // Substitute in player name from parameters
+    // Substitute in target name from parameters
+    // Substitute in spell name from parameters
     static getRandomCombatMessage(playerName, opponentName, spellName) {
         let randomIndex = Math.floor(Math.random() * this.combatMessages.length);
         let message = this.combatMessages[randomIndex];

@@ -33,6 +33,7 @@ export class Player {
         this.fishList = [];
     }
 
+    // Dodge chance has a cap of 50%
     setDodgeChance(dodgeChance) {
         if (dodgeChance > 50) {
             this.dodgeChance = 50;
@@ -42,6 +43,8 @@ export class Player {
         }
     }
 
+    // Resistances have a cap of 50%
+    // Sets all elemental resistances at a time
     setResistances(scorchRes, voltRes, freezeRes) {
         if (scorchRes > 50) {
             scorchRes = 50;
@@ -58,14 +61,19 @@ export class Player {
         this.resistances = [scorchRes, voltRes, freezeRes];
     }
 
+    // Returns a string representing the player's resistances
+    // for display
     getResistanceString() {
         return `🔥 ${this.resistances[0]} | ⚡ ${this.resistances[1]} | ❄️ ${this.resistances[2]}`;
     }
 
+    // Returns a string representing the player's attributes
+    // for display
     getAttributesString() {
         return `🏃‍♂️ ${this.attributes[0]} | 💪 ${this.attributes[1]} | 🧠 ${this.attributes[2]}`;
     }
 
+    // Revert player to base stats for modification
     revertToBase() {
         this.maxHealth = 1000;
         this.health = this.maxHealth;
@@ -77,9 +85,12 @@ export class Player {
         this.dodgeChance = 0;
     }
 
+    // Calculates damage taken
+    // Returns message for damage taken / dodged
     takeDamage(amount) {
         let stringified = '';
 
+        // See if damage was dodged
         if (chance(this.dodgeChance) === true) {
             stringified = `- ${this.username} dodged`;
         }
@@ -103,6 +114,8 @@ export class Player {
         return stringified;
     }
 
+    // Calculate amount healed
+    // Player cannot be healed to above their max health
     heal(amount) {
         if (this.health + amount > this.maxHealth) {
             this.health = this.maxHealth;
@@ -112,6 +125,8 @@ export class Player {
         }
     }
 
+    // Grab random spell from spell list
+    // Filters out null entries
     getRandomSpell() {
         let spellListTemp = this.spellList.filter(spell => spell != null);
 
@@ -120,15 +135,18 @@ export class Player {
         return spellListTemp[randomIndex];
     }
 
+    // Grab spell name by spell list index
     getSpellName(index) {
         return this.spellList[index] ? this.spellList[index].spellName : "None";
     }
     
+    // Adds specified spell to spell list by index
     learnSpell(index, spell) {
         console.log(`spell learnt: ${spell.spellName}`);
         this.spellList[index] = spell;
     }
 
+    // Convert object to JSON
     toJSON() {
         let JSON = {
             _id: this.userID,
@@ -139,7 +157,11 @@ export class Player {
                 resistances: this.resistances,
                 attributes: this.attributes,
             },
+            
+            // Handle spell list
             spell_list: this.spellList.map(spell => spell ? spell.toJSON() : null),
+            
+            // Handle inventory
             inventory: {
                 staff: this.inventory.staff ? this.inventory.staff.toJSON() : null,
                 amulet: this.inventory.amulet ? this.inventory.amulet.toJSON() : null,
@@ -147,12 +169,15 @@ export class Player {
                 ring2: this.inventory.ring2 ? this.inventory.ring2.toJSON() : null,
                 belt: this.inventory.belt ? this.inventory.belt.toJSON() : null
             },
+
+            // Handle fish barrel
             fish_list: this.fishList.map(fish => fish ? fish.toJSON() : null),
         }
         // console.log("Player to JSON: ", JSON);
         return JSON;
     }
 
+    // Convert JSON to object
     static fromJSON(doc) {
         if (!doc) {
             return null;
@@ -167,12 +192,14 @@ export class Player {
         player.resistances = doc.stats.resistances;
         player.attributes = doc.stats.attributes;
 
+        // Handle spell list
         if (doc.spell_list) {
             player.spellList = doc.spell_list.map(
                 spellData => spellData ? new Spell(spellData._id, spellData.tier, spellData.spell_name, spellData.base_damage, spellData.crit_chance, spellData.crit_damage, spellData.tags) : null
             );
         }
 
+        // Handle inventory
         if (doc.inventory) {
             player.inventory = {
                 staff: doc.inventory.staff ? Item.fromJSON(doc.inventory.staff) : null,
@@ -183,6 +210,7 @@ export class Player {
             }
         }
 
+        // Handle fish barrel
         if (doc.fish_list) {
             player.fishList = doc.fish_list.map(
                 fishData => Fish.fromJSON(fishData)
@@ -193,6 +221,7 @@ export class Player {
     }
 
     // Return component list which shows player stats
+    // Includes buttons
     showPlayer(userID) {
         let componentList = [
             {
@@ -252,6 +281,7 @@ export class Player {
     }
 
     // Returns component List which has stats for all spells in specified list
+    // Includes buttons
     showSpells() {
         let componentList = [];
         let spellListTemp = this.spellList.filter(spell => spell != null);
@@ -295,6 +325,7 @@ export class Player {
         return componentList;
     }
 
+    // Returns component list that shows player's fish barrel
     showFish() {
         let componentList = [
             {
@@ -329,6 +360,7 @@ export class Player {
         return componentList;
     }
 
+    // Returns options list for fish string select at swap
     getFishOptions() {
         let options = [];
 
@@ -345,6 +377,7 @@ export class Player {
         return options;
     }
 
+    // Returns component list for player's inventory
     showInventory() {
         let componentList = [
             {
@@ -406,6 +439,7 @@ export class Player {
         return componentList;
     }
 
+    // Slots item into the corresponding slot in player's inventory
     equipItem(item) {
         switch (item.itemType) {
             case Item.ITEM_TYPE.Staff:
@@ -427,6 +461,8 @@ export class Player {
         this.evaluateItems();
     }
 
+    // Calculate stat changes based on items equipped
+    // Called when player is loaded in (on construction)
     evaluateItems() {
         this.revertToBase();
 
@@ -453,6 +489,7 @@ export class Player {
         this.health = this.maxHealth;
     }
 
+    // Apply all stats found on items by evaluateItems()
     applyStats(stats) {
         let addedMaximumHealth = 0;
         let increasedMaximumHealth = 0;

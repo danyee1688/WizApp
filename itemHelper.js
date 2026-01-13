@@ -9,6 +9,7 @@ export class ItemHelper {
         3: [3, 5],
     }
 
+    // Get number of rolls an item will have based on rarity
     static getNumRolls(itemRarity) {
         let min = this.numRolls[itemRarity][0];
         let max = this.numRolls[itemRarity][1];
@@ -30,6 +31,7 @@ export class ItemHelper {
         1
     ]
 
+    // Get random rarity, weighted
     static getRandomRarity() {
         return weightedChoice(this.itemRarities, this.itemRarityWeights);
     }
@@ -41,6 +43,7 @@ export class ItemHelper {
         3
     ]
 
+    // Get random item base, unweighted
     static getRandomBase() {
         let randomIndex = Math.floor(Math.random() * this.itemBases.length);
 
@@ -72,12 +75,15 @@ export class ItemHelper {
         ]
     }
 
+    // Generate item name by base type and stats
     static generateName(type, stats) {
         let resultantName = '';
         let itemBaseNames = this.itemBaseNames[type];
         let randomIndex = Math.floor(Math.random() * itemBaseNames.length);
         let itemBaseName = itemBaseNames[randomIndex];
 
+        // If item has one stat, just use that stat's name as a prefix
+        // Otherwise, use the first two stat's names as prefixes
         if (stats.length > 1) {
             resultantName += stats[0].statName + ' ' + stats[1].statName + ' ' + itemBaseName
         }

@@ -940,6 +940,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         await savePlayer(player);
         let color = 0x000000;
 
+        // Set container color to red if loss,
+        // green if win
         if (results.victory === true) {
           color = 0x00FF00;
         }
@@ -953,6 +955,76 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         try {
           // Show message based on win condition
           if (results.victory === true) {
+            let lootComponents = [];
+            let componentList = [];
+            let itemDropped = false;
+            let itemContainerColor = 0x000000;
+            const followUpEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}`;
+
+            // 90% chance to drop gold
+            // 10% chance to drop item
+            if (chance(90) === true) {
+              // Components for dropping gold
+              lootComponents = [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `${enemy.enemyName} dropped ${results.goldGained} gold`,
+                },
+                {
+                  type: MessageComponentTypes.SEPARATOR,
+                  spacing: 1
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `${player.username} now has ${player.gold} gold`,
+                },
+              ]
+            }
+            // Components for dropping item
+            else {
+              itemDropped = true;
+
+              // Initial loot drop message in combat results
+              lootComponents = [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `${enemy.enemyName} dropped an item!`,
+                },
+              ]
+
+              // Generate new item
+              const item = new Item();
+              const itemID = randomUUID();
+              LootManager.addLoot(itemID, item);
+              itemContainerColor = item.rarityToColor();
+              const itemComponents = item.toComponent();
+              const buttonComponent = [
+                {
+                  type: MessageComponentTypes.ACTION_ROW,
+                  components: [
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      label: "Take and equip",
+                      custom_id: `take_loot_${userID}_${itemID}`,
+                      style: ButtonStyleTypes.PRIMARY,
+                    },
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      label: "Dismiss",
+                      custom_id: `dismiss_message_${userID}`,
+                      style: ButtonStyleTypes.SECONDARY,
+                    }
+                  ]
+                }
+              ];
+              componentList = [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `## 💎 <@${userID}>'s Loot`
+                },
+              ].concat(itemComponents).concat(buttonComponent);
+            }
+
             await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
                 data: {
@@ -981,24 +1053,29 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                         {
                           type: MessageComponentTypes.SEPARATOR,
                           spacing: 1
-                        },
-                        {
-                          type: MessageComponentTypes.TEXT_DISPLAY,
-                          content: `${enemy.enemyName} dropped ${results.goldGained} gold`,
-                        },
-                        {
-                          type: MessageComponentTypes.SEPARATOR,
-                          spacing: 1
-                        },
-                        {
-                          type: MessageComponentTypes.TEXT_DISPLAY,
-                          content: `${player.username} now has ${player.gold} gold`,
-                        },
-                      ]
+                        }
+                      ].concat(lootComponents),
                     }
                   ]
                 }
             });
+
+            // Item drop follow-up
+            if (itemDropped === true) {
+              await DiscordRequest(followUpEndpoint, {
+                method: "POST",
+                body: {
+                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.CONTAINER,
+                      accent_color: itemContainerColor,
+                      components: componentList,
+                    }
+                  ],
+                }
+              });
+            }
           }
           // If loss
           else {
@@ -1105,12 +1182,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
               success = true;
 
+              // Set loot message to timeout after 30 seconds
               setTimeout(async () => {
                 try {
                   await DiscordRequest(endpoint, {
                     method: 'DELETE',
                   });
 
+                  // Remove respective loot from loot manager
                   LootManager.removeLoot(itemID);
                 } catch (err) {
                   console.error("Timeout error: " + err);
@@ -1157,12 +1236,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   },
                 ].concat(spell.toComponent()).concat(buttonComponent);
 
+                // Remove respective loot from loot manager
                 setTimeout(async () => {
                   try {
                     await DiscordRequest(endpoint, {
                       method: 'DELETE',
                     });
 
+                    // Remove respective loot from loot manager
                     LootManager.removeLoot(itemID);
                   } catch (err) {
                     console.error("Timeout error: " + err);
@@ -1187,6 +1268,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 }
               });
 
+              // Update shop to show remaining coin balance
               await DiscordRequest(shopEndpoint, {
                 method: "PATCH",
                 body: {
@@ -1282,6 +1364,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
+      // Delete shop message
       try {
         await res.send({
           type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE
@@ -1365,17 +1448,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
       let player = await loadPlayer(userID);
+      // Make component list for player's inventory
       let componentList = player.showInventory().concat([
         {
-            type: MessageComponentTypes.ACTION_ROW,
-            components: [
-                {
-                    type: MessageComponentTypes.BUTTON,
-                    custom_id: `back_to_wizard_${userID}`,
-                    label: 'Back',
-                    style: ButtonStyleTypes.PRIMARY,
-                }
-            ]
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+                type: MessageComponentTypes.BUTTON,
+                custom_id: `back_to_wizard_${userID}`,
+                label: 'Back',
+                style: ButtonStyleTypes.PRIMARY,
+            }
+          ]
         }
       ]);
 
@@ -1417,6 +1501,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           const player = await loadPlayer(userID);
 
           // Delete loot message and show spell equip menu
+          // User can choose between 3 slots
+          // If there was spell in that slot, that spell is written over
           try {
             await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -1507,6 +1593,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       if (playerExists === true) {
         const player = await loadPlayer(userID);
 
+        // Player learns respective spell and saves immediately
         player.learnSpell(spellSlot, spell);
         savePlayer(player);
 
@@ -1515,6 +1602,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
           });
 
+          // Patch previous method to show which slot spell was 
+          // placed in
           await DiscordRequest(endpoint, {
             method: 'PATCH',
             body: {
@@ -1559,6 +1648,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       if (actionUserID === opponentUserID) {
         let playerExists = await hasPlayer(userID) && await hasPlayer(opponentUserID);
 
+        // Check if players exist for both users
+        // Initiator and target must both have wizards set up
         if (playerExists === true) {
           let player = await loadPlayer(userID);
           let opponent = await loadPlayer(opponentUserID);
@@ -1566,6 +1657,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           let results = await duel(player, opponent);
           let color = 0x000000;
 
+          // Green if initiator wins, red if they lose
           if (results.victory === true) {
             color = 0x00FF00;
           }
@@ -1719,9 +1811,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
       try {
+        // Check if user who used command is same as the person 
+        // who clicked the reel button
         if (userID === fisherID) {
+          // Get fish, weighted
           const fish = FishDB.getRandomFish();
 
+          // Determine which message to send depending on 
+          // whether or not user was able to press the 
+          // reel button in time
           if (result === 'succeed') {
             await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -1815,9 +1913,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const fishValue = componentID.split('_')[3];
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
+      // Check if user who used command is same as the person 
+      // who clicked the sell button
       if (fisherID === userID) {
+        // Load player and give player respective gold
+        // from fish value
         let player = await loadPlayer(userID);
-
         player.gold += Number(fishValue);
 
         await res.send({
@@ -1872,12 +1973,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const fishValue = Number(componentID.split('_')[6]);
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
+      // Check if user who used command is same as the person 
+      // who clicked the keep button
       if (fisherID === userID) {
+        // Load player and fish fields
         let player = await loadPlayer(userID);
         let fish = Fish.copyFish(FishDB.fishListDict[fishRarity][fishID]);
         fish.weight = fishWeight;
         fish.value = fishValue;
 
+        // Ensure player does not have more than 10 fish
+        // in their barrel
+        // Swap fish out if they have more than 10 fish
         if (player.fishList.length >= 10) {
           await res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
@@ -1962,14 +2069,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const fishValue = Number(componentID.split('_')[5]);
       const swapIndex = req.body.data.values[0];
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
-
-      let player = await loadPlayer(userID);
       
       try {
+        // Load player and fish fields
+        let player = await loadPlayer(userID);
         let fish = Fish.copyFish(FishDB.fishListDict[fishRarity][fishID]);
         fish.weight = fishWeight;
         fish.value = fishValue;
 
+        // Swap fish in player's fish barrel
         player.fishList.splice(swapIndex, 1, fish);
 
         await res.send({
@@ -2000,6 +2108,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userID = componentID.split('_')[2];
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
 
+      // Check if dismisser is the same person who initiated
+      // the message response
       if (userID === dismisserID) {
         try {
           await res.send({
@@ -2043,6 +2153,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     const context = req.body.context;
     const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
 
+    // Wizard creation modal handling, creating new player 
+    // with specified name in parameters
     if (data.custom_id.startsWith(`wizard_creation_`)) {
       const wizardName = data.components[1].components[0].value;
       await savePlayer(new Player(`${userID}`, wizardName));

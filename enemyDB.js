@@ -38,6 +38,7 @@ export class EnemyDB {
         1
     ]
 
+    // Grab random enemy, weighted by enemy tier
     static getRandomEnemy() {
         let listTemp = weightedChoice(this.enemyLists, this.enemyRarityWeights);
 
@@ -47,10 +48,13 @@ export class EnemyDB {
         return this.copyEnemy(randomEnemy);
     }
 
+    // Copy enemy by object
+    // Avoids persistent changes to objects
     static copyEnemy(enemy) {
         return new Enemy(enemy.enemyID, enemy.enemyTier, enemy.enemyName, enemy.enemyMaxHealth, enemy.enemyDamage, enemy.enemyResistances);
     }
 
+    // Find an enemy object by ID and tier
     static findEnemyByID(enemyTier, enemyID) {
         return this.copyEnemy(this.enemyLists[enemyTier][enemyID]);
     }

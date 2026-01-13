@@ -14,18 +14,13 @@ export class Spell {
         this.tags = tags;
     }
 
-    getName() {
-        return this.spellName;
-    }
-
-    getDamage() {
-        return this.baseDamage;
-    }
-
+    // Returns string representing the damage that this spell does
     getDamageString() {
         return `🔥 ${this.baseDamage[0]} | ⚡ ${this.baseDamage[1]} | ❄️ ${this.baseDamage[2]}`;
     }
 
+    // Returns string for all tags this spell has for display
+    // purposes
     getTagsString() {
         let retVal = '-# ';
 
@@ -46,6 +41,7 @@ export class Spell {
         return retVal;
     }
 
+    // Returns string based on spell tier for display purposes
     getTierString() {
         let retVal = 'Tier ';
 
@@ -72,6 +68,7 @@ export class Spell {
         return retVal;
     }
 
+    // Convert object to JSON
     toJSON() {
         return {
             _id: this.spellID,
@@ -84,6 +81,7 @@ export class Spell {
         }
     }
 
+    // Convert object to component for discord messages
     toComponent() {
         return [
             {
