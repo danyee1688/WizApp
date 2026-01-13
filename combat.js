@@ -73,7 +73,7 @@ function enemyTurn(player, enemy) {
 
 // Calculate gold gain from killing a non-player enemy
 function calcGoldGain(enemy) {
-    let range = [100 * Math.pow(2, enemy.enemyTier), 100 * Math.pow(2, enemy.enemyTier + 1)]
+    let range = [75 * Math.pow(3, enemy.enemyTier), 75 * Math.pow(3, enemy.enemyTier + 1)]
 
     let value = Math.floor(Math.random() * (range[1] - range[0] + 1))+ range[0];
 

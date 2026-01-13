@@ -298,11 +298,17 @@ export class SpellDB {
         return spell;
     }
 
+    // Get random spell (weighted for tiers)
     static getRandomSpell(blacklist) {
+        console.log(`getRandonSpell() debug`);
+
         let validSpellIDs = [];
         let blacklistFiltered = blacklist.filter(spell => spell != null);
 
-        for (let i = 0; i < this.spellList.length; i++) {
+        // Loop through spell list and get valid spell IDs
+        for (let i = 0; i < Object.keys(this.spellList).length; i++) {
+            console.log(`i: ${i}`)
+
             let found = false;
 
             blacklistFiltered.forEach((spell) => {
@@ -312,6 +318,7 @@ export class SpellDB {
             });
 
             if (found === false) {
+                console.log(`pushed i`);
                 validSpellIDs.push(i);
             }
         }
@@ -320,7 +327,7 @@ export class SpellDB {
         let randomSpellID = validSpellIDs[randomIndex];
         let randomTier = weightedChoice(this.spellTiers, this.spellTierWeights) - 1; // Convert to zero based
 
-        return spellList[randomSpellID][randomTier];
+        return this.spellList[randomSpellID][randomTier];
     }
 
     static convertSpellListToString(spellList) {

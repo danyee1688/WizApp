@@ -89,10 +89,10 @@ export class FishDB {
     }
 
     static fishRarityWeights = [
-        800,
+        500,
         100,
         15,
-        2,
+        1,
     ]
 
     // Get a random fish, weighted with rarity

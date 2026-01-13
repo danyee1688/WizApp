@@ -1813,7 +1813,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             components: [
               {
                 type: MessageComponentTypes.TEXT_DISPLAY,
-                content: `Fish has been sold for ${fishValue}!`
+                content: `Fish has been sold for ${fishValue} gold!`
               },
               {
                 type: MessageComponentTypes.SEPARATOR,

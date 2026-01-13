@@ -58,7 +58,7 @@ export class Fish {
     }
 
     getWeightPercentageString() {
-        let weightPercentage = Math.floor(this.weight / this.weightRolls[1] * 10000) / 100;
+        let weightPercentage = Math.floor(((this.weight - this.weightRolls[0])/(this.weightRolls[1] - this.weightRolls[0])) * 10000) / 100;
 
         return `${weightPercentage}%`;
     }

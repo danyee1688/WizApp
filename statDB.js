@@ -258,7 +258,7 @@ export class StatDB {
             ]
         ),
         new Stat(21, "Advantageous",
-            "+# crit damage",
+            "+#% crit damage",
             [
                 [5, 15],
                 [16, 26],
