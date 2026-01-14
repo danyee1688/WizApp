@@ -115,7 +115,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 components: [
                   {
                     type: MessageComponentTypes.INPUT_TEXT,
-                    custom_id: `wizard_name${userID}`,
+                    custom_id: `wizard_name_${userID}`,
                     style: TextStyleTypes.SHORT,
                     label: 'Name',
                     required: true,

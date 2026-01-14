@@ -437,7 +437,7 @@ export class StatDB {
         7,
         1,
         1,
-        100,
+        1,
     ]
 
     static ringStatList = [
