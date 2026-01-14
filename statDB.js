@@ -309,7 +309,8 @@ export class StatDB {
                 [32, 47],
             ],
             [
-                1
+                1,
+                3
             ]
         ),
         new Stat(26, "Circuit-breaking",
@@ -320,7 +321,8 @@ export class StatDB {
                 [32, 47],
             ],
             [
-                1
+                1,
+                3
             ]
         ),
         new Stat(27, "Hare's",
@@ -329,6 +331,40 @@ export class StatDB {
                 [10, 25],
                 [26, 31],
                 [32, 47],
+            ],
+            [
+                1,
+                3
+            ]
+        ),
+        new Stat(28, "Scorching",
+            "+# to tier of all scorch skills",
+            [
+                [1, 1],
+                [1, 1],
+                [1, 1],
+            ],
+            [
+                1
+            ]
+        ),
+        new Stat(29, "Volting",
+            "+# to tier of all volt skills",
+            [
+                [1, 1],
+                [1, 1],
+                [1, 1],
+            ],
+            [
+                1
+            ]
+        ),
+        new Stat(30, "Freezing",
+            "+# to tier of all freeze skills",
+            [
+                [1, 1],
+                [1, 1],
+                [1, 1],
             ],
             [
                 1
@@ -379,6 +415,9 @@ export class StatDB {
         this.statList[25],
         this.statList[26],
         this.statList[27],
+        this.statList[28],
+        this.statList[29],
+        this.statList[30],
     ];
 
     static amuletWeights = [
@@ -395,7 +434,10 @@ export class StatDB {
         10,
         7,
         7,
-        7
+        7,
+        1,
+        1,
+        100,
     ]
 
     static ringStatList = [
@@ -438,6 +480,9 @@ export class StatDB {
         this.statList[12],
         this.statList[13],
         this.statList[21],
+        this.statList[25],
+        this.statList[26],
+        this.statList[27],
     ]
 
     static beltWeights = [
@@ -451,6 +496,9 @@ export class StatDB {
         15,
         15,
         15,
+        4,
+        4,
+        4,
         4,
     ]
 

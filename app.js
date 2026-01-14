@@ -39,8 +39,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 let activeArenas = {};
 
-console.log("openai API key: ", process.env.OPENAI_API_KEY?.slice(0, 8));
-
 await connectToDB();
 
 /**

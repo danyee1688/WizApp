@@ -18,6 +18,21 @@ export class FishDB {
         new Fish(4, "Wood Frog Tadpole", "Common", 
             [0.01, 0.02],
         ),
+        new Fish(5, "Zebrafish", "Common",
+            [0.01, 0.02],
+        ),
+        new Fish(6, "Mountain Minnow", "Common",
+            [0.01, 0.02],
+        ),
+        new Fish(7, "Panda Corydoras", "Common",
+            [0.01, 0.04],
+        ),
+        new Fish(8, "Tiger Barb", "Common",
+            [0.01, 0.02],
+        ),
+        new Fish(9, "Hatchetfish", "Common",
+            [0.01, 0.035],
+        ),
     ]
 
     static rareFishList = [
@@ -91,9 +106,9 @@ export class FishDB {
     }
 
     static fishRarityWeights = [
-        500,
-        100,
-        15,
+        150,
+        40,
+        9,
         1,
     ]
 

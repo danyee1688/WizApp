@@ -217,6 +217,8 @@ export class Player {
             )
         }
 
+        player.evaluateItems();
+
         return player;
     }
 
@@ -517,6 +519,9 @@ export class Player {
         let addedProjectileCritDamage = 0;
         let increasedAreaCritChance = 0;
         let addedAreaCritDamage = 0;
+        let addedScorchSpellTier = 0;
+        let addedVoltSpellTier = 0;
+        let addedFreezeSpellTier = 0;
 
         stats.forEach((stat) => {
             switch (stat.statID) {
@@ -604,6 +609,15 @@ export class Player {
                 case 27:
                     increasedFreezeCritChance += stat.value;
                     break;
+                case 28:
+                    addedScorchSpellTier += stat.value;
+                    break;
+                case 29:
+                    addedVoltSpellTier += stat.value;
+                    break;
+                case 30:
+                    addedFreezeSpellTier += stat.value;
+                    break;
             }
         });
 
@@ -639,5 +653,33 @@ export class Player {
             [increasedProjectileCritChance, addedProjectileCritDamage],
             [increasedAreaCritChance, addedAreaCritDamage],
         ];
+        this.applyAddedSpellTiers(
+            addedScorchSpellTier,
+            addedVoltSpellTier,
+            addedFreezeSpellTier,
+        )
+    }
+
+    applyAddedSpellTiers(addedScorchTier, addedVoltTier, addedFreezeTier) {
+        this.spellList.forEach((spell) => {
+            if (spell !== null) {
+                let spellTier = spell.tier;
+                let effectiveTier = spellTier;
+
+                if (spell.hasTag("Scorch")) {
+                    effectiveTier += addedScorchTier;
+                }
+
+                if (spell.hasTag("Volt")) {
+                    effectiveTier += addedVoltTier;
+                }
+
+                if (spell.hasTag("Freeze")) {
+                    effectiveTier += addedFreezeTier;
+                }
+
+                spell.setEffectiveTier(effectiveTier);
+            }
+        });
     }
 }

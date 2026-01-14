@@ -7,6 +7,7 @@ export class Spell {
     constructor(spellID, tier, spellName, baseDamage, critChance, critDamage, tags) {
         this.spellID = spellID;
         this.tier = tier;
+        this.effectiveTier = tier;
         this.spellName = spellName;
         this.baseDamage = baseDamage;
         this.critChance = critChance;
@@ -17,6 +18,25 @@ export class Spell {
     // Returns string representing the damage that this spell does
     getDamageString() {
         return `🔥 ${this.baseDamage[0]} | ⚡ ${this.baseDamage[1]} | ❄️ ${this.baseDamage[2]}`;
+    }
+
+    // Returns Spell object
+    // Prevents changing persistent objects
+    static copySpell(spell) {
+        let spellTemp = new Spell(spell.spellID, spell.spellName, spell.baseDamage, spell.critChance, spell.critDamage, spell.tags);
+
+        return spellTemp;
+    }
+
+    // Have this spell copy data, effectively
+    // turning into a specified spell
+    copySpellLocal(spell) {
+        this.spellID = spell.spellID;
+        this.spellName = spell.spellName;
+        this.baseDamage = spell.baseDamage;
+        this.critChance = spell.critChance;
+        this.critDamage = spell.critDamage;
+        this.tags = spell.tags;
     }
 
     // Returns string for all tags this spell has for display
@@ -45,7 +65,7 @@ export class Spell {
     getTierString() {
         let retVal = 'Tier ';
 
-        switch (this.tier) {
+        switch (this.effectiveTier) {
             case 1:
                 retVal += 'I';
                 break;
@@ -68,16 +88,35 @@ export class Spell {
         return retVal;
     }
 
+    // Cap effective tier at 5
+    // Also set spell's stats if necessary
+    setEffectiveTier(tier) {
+        if (tier > 5) {
+            this.effectiveTier = 5;
+        }
+        else {
+            this.effectiveTier = tier;
+        }
+
+        if (this.effectiveTier !== this.tier) {
+            let tieredSpell = SpellDB.spellList[this.spellID][this.effectiveTier - 1];
+
+            this.copySpellLocal(tieredSpell);
+        }
+    }
+
     // Convert object to JSON
     toJSON() {
+        let baseSpell = SpellDB.spellList[this.spellID][this.tier - 1];
+
         return {
-            _id: this.spellID,
-            spell_name: this.spellName,
-            tier: this.tier,
-            crit_chance: this.critChance,
-            crit_damage: this.critDamage,
-            base_damage: this.baseDamage,
-            tags: this.tags,
+            _id: baseSpell.spellID,
+            spell_name: baseSpell.spellName,
+            tier: baseSpell.tier,
+            crit_chance: baseSpell.critChance,
+            crit_damage: baseSpell.critDamage,
+            base_damage: baseSpell.baseDamage,
+            tags: baseSpell.tags,
         }
     }
 
@@ -105,5 +144,16 @@ export class Spell {
                 content: SpellDB.getSpellDescription(this),
             },
         ]
+    }
+
+    // Returns boolean 
+    // Whether or not spell has tag
+    hasTag(tag) {
+        if (this.tags.includes(tag)) {
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 }
