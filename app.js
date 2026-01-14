@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import OpenAI from 'openai';
 import express from 'express';
 import {
   ButtonStyleTypes,
@@ -37,6 +38,8 @@ const app = express();
 // Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
 let activeArenas = {};
+
+console.log("openai API key: ", process.env.OPENAI_API_KEY?.slice(0, 8));
 
 await connectToDB();
 
@@ -117,6 +120,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                     custom_id: `wizard_name${userID}`,
                     style: TextStyleTypes.SHORT,
                     label: 'Name',
+                    required: true,
                     placeholder: 'Bob, the Herald of Doom',
                   },
                 ],
@@ -561,6 +565,180 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         } catch (err) {
           console.error("Error sending response: ", err);
         }
+      }
+    }
+
+    if (name === 'gamble') {
+      const context = req.body.context;
+      const percentage = req.body.data.options[0].value;
+      const coinSide = req.body.data.options[1].value;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+
+      console.log("percentage wagered: " , percentage);
+
+      let playerExists = await hasPlayer(userID);
+
+      if (playerExists === true) {
+        let player = await loadPlayer(userID);
+
+        if (player.gold >= 250) {
+          const wager = Math.floor(player.gold * percentage);
+          console.log("wager: ", wager);
+          // Subtract wager from player's gold
+          player.gold -= wager;
+
+          let flipResult = 0;
+          let flipSide = "";
+          // 50% chance of heads
+          // 50% chance of tails
+          if (chance(50) === true) {
+            flipResult = 1;
+            flipSide = "heads";
+          } 
+          else {
+            flipResult = 0;
+            flipSide = "tails";
+          }
+
+          // If coin side matches flip result
+          // Gain double the wager
+          if (flipResult === coinSide) {
+            player.gold += wager * 2;
+            await savePlayer(player);
+
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0x00FF00,
+                    components: [
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: '## 📈 Gamble Results',
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `The coin landed on ${flipSide}`,
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `You've won ${wager * 2} gold!`,
+                      },
+                      {
+                        type: MessageComponentTypes.SEPARATOR,
+                        spacing: 1,
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `${player.username} now has ${player.gold} gold`
+                      }
+                    ]
+                  }
+                ],
+              }
+            });
+          }
+          // Lose the wager
+          else {
+            await savePlayer(player);
+
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0xFF0000,
+                    components: [
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: '## 📉 Gamble Results',
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `The coin landed on ${flipSide}`,
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `You've lost ${wager} gold`,
+                      },
+                      {
+                        type: MessageComponentTypes.SEPARATOR,
+                        spacing: 1,
+                      },
+                      {
+                        type: MessageComponentTypes.TEXT_DISPLAY,
+                        content: `${player.username} now has ${player.gold} gold`
+                      }
+                    ]
+                  }
+                ],
+              }
+            });
+          }
+        }
+        else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `Unfortunately, you do not have enough gold to gamble\nYou need at least 250 gold\nYou have ${player.gold} gold`
+                }
+              ],
+            }
+          });
+        }
+      }
+      else {
+        try {
+          return getWizardMissingResponse(res);
+        } catch (err) {
+          console.error('Error sending message: ', err);
+        }
+      }
+    }
+
+    if (name === 'ponder') {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      try {
+        return res.send({
+          type: InteractionResponseType.MODAL,
+          data: {
+            custom_id: `ponder_submit_${userID}`,
+            title: '🔮 The Orb',
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `The Orb awaits your queries, glimmering with anticipation and wisdom`,
+              },
+              {
+                type: MessageComponentTypes.ACTION_ROW,
+                components: [
+                  {
+                    type: MessageComponentTypes.INPUT_TEXT,
+                    custom_id: `ponder_message_${userID}`,
+                    style: TextStyleTypes.PARAGRAPH,
+                    label: 'Question',
+                    min_length: 1,
+                    max_length: 4000,
+                    required: true,
+                    placeholder: 'Enter your ponderances here',
+                  },
+                ],
+              },
+            ]
+          }
+        });
+      } catch (err) {
+        console.log("Error sending message: ", err);
       }
     }
 
@@ -2169,6 +2347,75 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
       } catch (err) {
         console.error('Error sending message', err);
+      }
+    }
+    else if (data.custom_id.startsWith(`ponder_submit_`)) {
+      const message = data.components[1].components[0].value;
+      let response = "";
+
+      // Get new client
+      const client = new OpenAI();
+      let errorOccurred = false;
+
+      // Try to get response from ChatGPT
+      try {
+        let rawResponse = await client.responses.create({
+          model: 'gpt-4o-mini',
+          input: [
+            {
+              role: "system",
+              content: "You are a wise wizard who has lived for thousands of years offering advice to new wizards. Be succinct."
+            },
+            {
+              role: "user",
+              content: message,
+            }
+          ],
+          max_output_tokens: 500,
+        });
+
+        response = rawResponse.output_text;
+      } catch (err) {
+        errorOccurred = true;
+
+        console.error("Error Code: ", err.message.split(' ')[0]);
+        console.error("Error with OpenAI response: ", err);
+      }
+      
+      try {
+        await res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.CONTAINER,
+                accent_color: 0xFF00FF,
+                components:
+                [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: '## 🔮 The Orb'
+                  },
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `<@${userID}> has pondered:\n${message}`
+                  },
+                  {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                  },
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `The Orb reveals:\n${response}`
+                  },
+                ]
+              }
+            ]
+          }
+        });
+      } catch (err) {
+        console.error("Error sending message: ", err);
       }
     }
 

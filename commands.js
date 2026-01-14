@@ -1,10 +1,10 @@
 import 'dotenv/config';
-import { capitalize, InstallGlobalCommands } from './utils.js';
+import { InstallGlobalCommands } from './utils.js';
 
 // Simple test command
 const TEST_COMMAND = {
   name: 'test',
-  description: 'Basic command',
+  description: 'See if Wiz is up and running',
   type: 1,
   integration_types: [0, 1],
   contexts: [0, 1, 2],
@@ -61,7 +61,7 @@ const ADVENTURE_COMMAND = {
   description: 'Take a wild leap into the woods',
   type: 1,
   integration_types: [0, 1],
-  contexts: [0, 2],
+  contexts: [0, 1, 2],
 }
 
 // Open the shop
@@ -72,7 +72,7 @@ const SHOP_COMMAND = {
   description: 'Purchase loot chests to upgrade your wizard!',
   type: 1,
   integration_types: [0, 1],
-  contexts: [0, 2],
+  contexts: [0, 1, 2],
 }
 
 // Challenge a wizard to a duel
@@ -155,7 +155,65 @@ const FISH_COMMAND = {
   description: 'Test your luck and reflexes fishing in a nearby pond',
   type: 1,
   integration_types: [0, 1],
-  contexts:[0, 2],
+  contexts:[0, 1, 2],
+}
+
+// Gamble a specified amount of your gold 
+// Either win double your wager or lose your wager
+const GAMBLE_COMMAND = {
+  name: 'gamble',
+  description: 'Gamble away your hard earned gold with a simple flip of a coin',
+  type: 1,
+  options: [
+    {
+      name: 'amount',
+      type: 10,
+      description: 'Select how much of your gold you wish to gamble',
+      required: true,
+      choices: [
+        {
+          name: 'All',
+          value: 1
+        },
+        {
+          name: 'Half',
+          value: 0.5
+        },
+        {
+          name: 'Quarter',
+          value: 0.25
+        }
+      ]
+    },
+    {
+      name: 'side',
+      type: 4,
+      description: 'Select a coin side',
+      required: true,
+      choices: [
+        {
+          name: 'Heads',
+          value: 1,
+        },
+        {
+          name: 'Tails',
+          value: 0
+        }
+      ]
+    }
+  ],
+  integration_types: [0, 1],
+  contexts:[0, 1, 2],
+}
+
+// Ponder the orb
+// AI-generated response to prompt
+const PONDER_COMMAND = {
+  name: 'ponder',
+  description: 'Ponder the orb of infinite wisdom',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
 }
 
 const ALL_COMMANDS = [
@@ -168,6 +226,8 @@ const ALL_COMMANDS = [
   DUEL_COMMAND,
   WIKI_COMMAND,
   FISH_COMMAND,
+  GAMBLE_COMMAND,
+  PONDER_COMMAND,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
