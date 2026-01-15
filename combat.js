@@ -18,7 +18,6 @@ export async function battle(player, enemy) {
     // If player wins
     else {
         let goldGain = calcGoldGain(enemy);
-        player.gold += goldGain;
 
         return {
             victory: true,

@@ -80,7 +80,7 @@ export class StatDB {
             ]
         ),
         new Stat(6, "Fire-touched",
-            "# increased scorch damage",
+            "#% increased scorch damage",
             [ 
                 [1, 5],
                 [6, 10],

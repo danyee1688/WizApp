@@ -1,5 +1,7 @@
 # WizApp
-A discord application made for experimentation and fun, centered around wizardry. This project stems from the original Getting Started application provided by Discord.
+A discord application made for experimentation and fun, centered around wizardry. Equip your wizard with randomly generated items and powerful spells. Demolish enemies and find loot. Fish for mystical creatures and sell them for gold. Fight other wizards in an arena or duel them in a 1v1.
+
+This project stems from the original Getting Started application provided by Discord.
 
 ## Commands
 ### Start
@@ -28,6 +30,9 @@ Look up information about a certain mechanic in Wiz.
 
 ### Fish
 Cast your fishing rod into a nearby pond. Your reflexes count in this fishing minigame.
+
+### Ponder
+Ask your deepest of inquiries to be answered by The Orb.
 
 
 

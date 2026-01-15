@@ -485,7 +485,7 @@ export class SpellDB {
     }
 
     // Get random spell (weighted for tiers)
-    static getRandomSpell(blacklist) {
+    static getRandomSpell(blacklist = []) {
         let validSpellIDs = [];
         let blacklistFiltered = blacklist.filter(spell => spell != null);
 

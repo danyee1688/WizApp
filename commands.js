@@ -207,7 +207,7 @@ const GAMBLE_COMMAND = {
 }
 
 // Ponder the orb
-// AI-generated response to prompt
+// AI-generated response to prompt using gpt-4o-mini
 const PONDER_COMMAND = {
   name: 'ponder',
   description: 'Ponder the orb of infinite wisdom',

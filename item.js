@@ -5,6 +5,7 @@ import {
     MessageComponentTypes,
     InteractionResponseType
 } from "discord-interactions";
+import { randomUUID } from "crypto";
 
 export class Item {
     // Enum for type
@@ -24,6 +25,8 @@ export class Item {
     }
 
     constructor() {
+        this.internalType = "item",
+        this.internalID = randomUUID();
         this.itemType = ItemHelper.getRandomBase();
         this.itemRarity = ItemHelper.getRandomRarity();
         this.stats = this.rollStats();

@@ -5,6 +5,7 @@ import {
 
 export class Spell {
     constructor(spellID, tier, spellName, baseDamage, critChance, critDamage, tags) {
+        this.internalType = "spell",
         this.spellID = spellID;
         this.tier = tier;
         this.effectiveTier = tier;
@@ -23,7 +24,7 @@ export class Spell {
     // Returns Spell object
     // Prevents changing persistent objects
     static copySpell(spell) {
-        let spellTemp = new Spell(spell.spellID, spell.spellName, spell.baseDamage, spell.critChance, spell.critDamage, spell.tags);
+        let spellTemp = new Spell(spell.spellID, spell.tier, spell.spellName, spell.baseDamage, spell.critChance, spell.critDamage, spell.tags);
 
         return spellTemp;
     }

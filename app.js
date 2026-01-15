@@ -1113,7 +1113,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
         // Start battle and get results
         let results = await battle(player, enemy);
-        await savePlayer(player);
         let color = 0x000000;
 
         // Set container color to red if loss,
@@ -1131,74 +1130,51 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         try {
           // Show message based on win condition
           if (results.victory === true) {
+            player.gold += results.goldGained ? results.goldGained : 0;
+
             let lootComponents = [];
-            let componentList = [];
-            let itemDropped = false;
-            let itemContainerColor = 0x000000;
             const followUpEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}`;
+            let lootList = LootManager.getLootEnemy(enemy.enemyTier);
 
-            // 90% chance to drop gold
-            // 10% chance to drop item
-            if (chance(90) === true) {
-              // Components for dropping gold
-              lootComponents = [
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `${enemy.enemyName} dropped ${results.goldGained} gold`,
-                },
-                {
-                  type: MessageComponentTypes.SEPARATOR,
-                  spacing: 1
-                },
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `${player.username} now has ${player.gold} gold`,
-                },
-              ]
-            }
-            // Components for dropping item
-            else {
-              itemDropped = true;
+            lootComponents = [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `${enemy.enemyName} dropped ${results.goldGained} gold`,
+              },
+              {
+                type: MessageComponentTypes.SEPARATOR,
+                spacing: 1
+              },
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `${player.username} now has ${player.gold} gold`,
+              },
+            ]
 
-              // Initial loot drop message in combat results
-              lootComponents = [
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `${enemy.enemyName} dropped an item!`,
-                },
-              ]
+            // Add components if enemy dropped an item or more
+            if (lootList.length > 0) {
+              lootComponents = lootComponents.concat({
+                type: MessageComponentTypes.SEPARATOR,
+                spacing: 1,
+              });
 
-              // Generate new item
-              const item = new Item();
-              const itemID = randomUUID();
-              LootManager.addLoot(itemID, item);
-              itemContainerColor = item.rarityToColor();
-              const itemComponents = item.toComponent();
-              const buttonComponent = [
-                {
-                  type: MessageComponentTypes.ACTION_ROW,
-                  components: [
-                    {
-                      type: MessageComponentTypes.BUTTON,
-                      label: "Take and equip",
-                      custom_id: `take_loot_${userID}_${itemID}`,
-                      style: ButtonStyleTypes.PRIMARY,
-                    },
-                    {
-                      type: MessageComponentTypes.BUTTON,
-                      label: "Dismiss",
-                      custom_id: `dismiss_message_${userID}`,
-                      style: ButtonStyleTypes.SECONDARY,
-                    }
-                  ]
-                }
-              ];
-              componentList = [
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `## 💎 <@${userID}>'s Loot`
-                },
-              ].concat(itemComponents).concat(buttonComponent);
+              // Plural check
+              if (lootList.length === 1) {
+                lootComponents = lootComponents.concat([
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `${enemy.enemyName} dropped an item!`
+                  }
+                ]);
+              }
+              else if (lootList.length > 1) {
+                lootComponents = lootComponents.concat([
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `${enemy.enemyName} dropped some items!`
+                  }
+                ]);
+              }
             }
 
             await res.send({
@@ -1236,20 +1212,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 }
             });
 
-            // Item drop follow-up
-            if (itemDropped === true) {
+            // Post requests for loot dropped (if any)
+            for (let i = 0; i < lootList.length; i++) {
               await DiscordRequest(followUpEndpoint, {
                 method: "POST",
-                body: {
-                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-                  components: [
-                    {
-                      type: MessageComponentTypes.CONTAINER,
-                      accent_color: itemContainerColor,
-                      components: componentList,
-                    }
-                  ],
-                }
+                body: LootManager.lootToComponent(lootList[i], userID),
               });
             }
           }
@@ -1287,6 +1254,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             });
           }
 
+          await savePlayer(player);
+
           // Delete original message after combat finished
           await DiscordRequest(endpoint, {
             method: 'DELETE',
@@ -1308,6 +1277,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
       const shopEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+      const followUpEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}`;
+      
       const playerExists = await hasPlayer(userID);
       if (playerExists === true) {
         const player = await loadPlayer(userID);
@@ -1317,132 +1288,26 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           if (player.gold >= 500) {
             player.gold -= 500; 
             await savePlayer(player);
-            let componentList = [];
-            let color = 0x000000;
+            let lootList = LootManager.getLootShop();
             let success = false;
 
-            // 90% chance to get an item, 
-            // 10% chance to learn a new spell
-            if (chance(90) === true) {
-              // Generate new item
-              const item = new Item();
-              const itemID = randomUUID();
-              LootManager.addLoot(itemID, item);
-              const itemComponents = item.toComponent();
-              color = item.rarityToColor();
-              const buttonComponent = [
-                {
-                  type: MessageComponentTypes.ACTION_ROW,
-                  components: [
-                    {
-                      type: MessageComponentTypes.BUTTON,
-                      label: "Take and equip",
-                      custom_id: `take_loot_${userID}_${itemID}`,
-                      style: ButtonStyleTypes.PRIMARY,
-                    },
-                    {
-                      type: MessageComponentTypes.BUTTON,
-                      label: "Dismiss",
-                      custom_id: `dismiss_message_${userID}`,
-                      style: ButtonStyleTypes.SECONDARY,
-                    }
-                  ]
-                }
-              ];
-              componentList = [
-                {
-                  type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: `## 💎 <@${userID}>'s Loot`
-                },
-              ].concat(itemComponents).concat(buttonComponent);
-
+            if (lootList.length > 0) {
               success = true;
-
-              // Set loot message to timeout after 30 seconds
-              setTimeout(async () => {
-                try {
-                  await DiscordRequest(endpoint, {
-                    method: 'DELETE',
-                  });
-
-                  // Remove respective loot from loot manager
-                  LootManager.removeLoot(itemID);
-                } catch (err) {
-                  console.error("Timeout error: " + err);
-                }
-              }, 30_000);
-            }
-            else {
-              // Learn a new spell
-              const spell = SpellDB.getRandomSpell(player.spellList);
-              color = 0xFFFFFF;
-
-              // If spell is not null
-              if (spell) {
-                success = true;
-
-                const buttonComponent = [
-                  {
-                    type: MessageComponentTypes.ACTION_ROW,
-                    components: [
-                      {
-                        type: MessageComponentTypes.BUTTON,
-                        label: "Learn Spell",
-                        custom_id: `learn_spell_${userID}_${spell.spellID}_${spell.tier - 1}`, // Convert to zero based
-                        style: ButtonStyleTypes.PRIMARY,
-                      },
-                      {
-                        type: MessageComponentTypes.BUTTON,
-                        label: "Dismiss",
-                        custom_id: `dismiss_message_${userID}`,
-                        style: ButtonStyleTypes.SECONDARY,
-                      }
-                    ]
-                  }
-                ];
-
-                componentList = [
-                  {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: `## 💎 <@${userID}>'s Loot`
-                  },
-                  {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: 'You have found a spell scroll!',
-                  },
-                ].concat(spell.toComponent()).concat(buttonComponent);
-
-                // Remove respective loot from loot manager
-                setTimeout(async () => {
-                  try {
-                    await DiscordRequest(endpoint, {
-                      method: 'DELETE',
-                    });
-
-                    // Remove respective loot from loot manager
-                    LootManager.removeLoot(itemID);
-                  } catch (err) {
-                    console.error("Timeout error: " + err);
-                  }
-                }, 30_000);
-              }
             }
             
             // If nothing went wrong, continue with sending the appropiate message
-            if (success = true) {
+            if (success === true) {
               await res.send({
-                type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-                data: {
-                  flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-                  components: [
-                    {
-                      type: MessageComponentTypes.CONTAINER,
-                      accent_color: color,
-                      components: componentList,
-                    }
-                  ]
-                }
+                type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
               });
+
+              // Loop through loot list and send new messages for each
+              for (let i = 0; i < lootList.length; i++) {
+                await DiscordRequest(followUpEndpoint, {
+                  method: "POST",
+                  body: LootManager.lootToComponent(lootList[i], userID),
+                })
+              }
 
               // Update shop to show remaining coin balance
               await DiscordRequest(shopEndpoint, {
@@ -1560,7 +1425,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
       const itemID = componentID.split('_')[3];
       const item = LootManager.activeLoot.get(itemID);
-      LootManager.removeLoot(itemID);
+
+      if (LootManager.hasLoot(itemID)) {
+        LootManager.removeLoot(itemID);
+      }
 
       console.log("itemID: " + itemID);
 
@@ -1759,7 +1627,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     else if (componentID.startsWith('equip_spell_')) {
       const context = req.body.context;
       const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
-      const spellSlot = componentID.split('_')[2];
+      const spellSlot = Number(componentID.split('_')[2]) - 1;
       const spellID = componentID.split('_')[3];
       const spellTier = componentID.split('_')[4];
       const spell = SpellDB.spellList[spellID][spellTier];
@@ -2283,6 +2151,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const dismisserID = context === 0 ? req.body.member.user.id : req.body.user.id;
       const userID = componentID.split('_')[2];
       const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+      const itemID = Number(componentID.split('_')[3]);
+
+      if (LootManager.hasLoot(itemID)) {
+        LootManager.removeLoot(itemID);
+      }
 
       // Check if dismisser is the same person who initiated
       // the message response
@@ -2328,6 +2201,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.MODAL_SUBMIT) {
     const context = req.body.context;
     const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+    const followUpEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}`;
 
     // Wizard creation modal handling, creating new player 
     // with specified name in parameters
@@ -2338,10 +2212,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       try {
         await res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.EPHEMERAL,
-            content: `${wizardName} has warped into this realm. Use /wizard to get detailed stats on your wizard. Good luck on your adventuring!`,
-          }
         });
       } catch (err) {
         console.error('Error sending message', err);
@@ -2349,8 +2219,25 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     }
     else if (data.custom_id.startsWith(`ponder_submit_`)) {
       const message = data.components[1].components[0].value;
-      let response = "";
+      let response = ""; 
 
+      try {
+         await res.send({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseType.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: "The orb is thinking...",
+              }
+            ]
+          }
+        });
+      } catch (err) {
+        console.error("Error deferring message", err);
+      }
+     
       // Get new client
       const client = new OpenAI();
       let errorOccurred = false;
@@ -2362,7 +2249,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           input: [
             {
               role: "system",
-              content: "You are a wise wizard who has lived for thousands of years offering advice to new wizards. Be succinct."
+              content: "You are a wise wizard who has lived for thousands of years offering advice to new wizards. Keep response below 250 characters."
             },
             {
               role: "user",
@@ -2373,6 +2260,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         });
 
         response = rawResponse.output_text;
+
+        console.log("Ponder Response: ", response);
       } catch (err) {
         errorOccurred = true;
 
@@ -2381,9 +2270,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
       
       try {
-        await res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
+        await DiscordRequest(followUpEndpoint, {
+          method: "POST",
+          body: {
             flags: InteractionResponseFlags.IS_COMPONENTS_V2,
             components: [
               {
