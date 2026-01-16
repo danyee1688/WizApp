@@ -6,12 +6,20 @@ const PlayerSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    privacy: String,
     username: String,
     gold: Number,
     stats: {
         max_health: Number,
         resistances: [Number],
         attributes: [Number],
+    },
+    info: {
+        enemiesKilled: Number,
+        arenasWon: Number,
+        duelsWon: Number,
+        fishCaught: Number,
+        lootCratesOpened: Number,
     },
     spell_list: [
         {
@@ -77,6 +85,20 @@ export async function loadPlayer(userID) {
     return player;
 }
 
+export async function loadAllPlayers() {
+    let playerList = [];
+    const docs = await PlayerModel.find({});
+
+    docs.forEach((doc) => {
+        let player = Player.fromJSON(doc);
+        player.evaluateItems();
+
+        playerList.push(player);
+    });
+
+    return playerList;
+}
+
 // Returns boolean based on whether or not player exists in DB
 // Checks by discord user ID
 export async function hasPlayer(userID) {
@@ -91,5 +113,14 @@ export async function hasPlayer(userID) {
     else {
         console.log(`User not found`);
         return false;
+    }
+}
+
+// Call this function to reload player schema
+export async function reloadDatabase() {
+    let playerList = await loadAllPlayers();
+
+    for (let i = 0; i < playerList.length; i++) {
+        await savePlayer(playerList[i]);
     }
 }

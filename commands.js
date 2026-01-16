@@ -216,6 +216,62 @@ const PONDER_COMMAND = {
   contexts: [0, 1, 2],
 }
 
+// Show a leaderboard of a certain type
+const LEADERBOARDS_COMMAND = {
+  name: 'leaderboards',
+  description: 'See how you compare to others in Wiz',
+  type: 1,
+  options: [
+    {
+      name: 'type',
+      type: 3,
+      description: 'select a leaderboard to view',
+      required: true,
+      choices: [
+        {
+          name: 'Fish Value',
+          value: 'Fish Value',
+        },
+        {
+          name: 'Gold',
+          value: 'Gold',
+        },
+      ],
+    }
+  ],
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+}
+
+// Set the privacy setting of your wizard profile
+// Public enables anyone to view your wizard using /wizard
+// Private only allows you to see your wizard using /wizard
+const SET_PRIVACY_COMMAND = {
+  name: 'set_privacy',
+  description: 'Enable or disable whether or not other users are able to see your wizard profile using /wizard',
+  type: 1,
+  options: [
+    {
+      name: 'privacy',
+      type: 3,
+      description: 'select a privacy option',
+      required: true,
+      choices: [
+        {
+          name: 'Private',
+          value: '_private',
+        },
+        {
+          name: 'Public',
+          value: '_public',
+        },
+      ],
+    }
+  ],
+  integration_types: [0, 1],
+  contexts: [0, 1, 2]
+}
+
 const ALL_COMMANDS = [
   TEST_COMMAND, 
   START_COMMAND, 
@@ -228,6 +284,8 @@ const ALL_COMMANDS = [
   FISH_COMMAND,
   GAMBLE_COMMAND,
   PONDER_COMMAND,
+  LEADERBOARDS_COMMAND,
+  SET_PRIVACY_COMMAND,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

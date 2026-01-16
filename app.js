@@ -16,6 +16,7 @@ import {
   loadPlayer, 
   savePlayer,
   hasPlayer,
+  reloadDatabase,
 } from './playerManager.js';
 import { Player } from './player.js';
 import { SpellDB } from './spellDB.js';
@@ -32,6 +33,8 @@ import { WikiDB } from './wikiDB.js';
 import { Arena } from './arena.js';
 import { FishDB } from './fishDB.js';
 import { Fish } from './fish.js';
+import { compareToFishingStats, loadFishingStat } from './fishingLeaderboard.js';
+import { getFishingValueLeaderboard, getGoldLeaderboard } from './leaderboardHelper.js';
 
 // Create an express app
 const app = express();
@@ -40,6 +43,7 @@ const PORT = process.env.PORT || 3000;
 let activeArenas = {};
 
 await connectToDB();
+await reloadDatabase();
 
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
@@ -183,30 +187,77 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     if (name === 'wizard') {
       const context = req.body.context;
       let userID = req.body.data.options ? req.body.data.options[0].value : null;
+      let noUserSpecified = false;
 
+      // If no user option, get user who used command
       if (!userID) {
+        noUserSpecified = true;
+
         userID = context === 0 ? req.body.member.user.id : req.body.user.id;
       }
 
       let playerExists = await hasPlayer(userID);
+
       if (playerExists === true) {
         let player = await loadPlayer(userID);
-        let componentList = player.showPlayer(userID);
 
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
-              {
-                type: MessageComponentTypes.CONTAINER,
-                accent_color: 108000,
-                components: componentList,
+        // Components based on privacy setting
+        // Also based on whether or not someone else wanted to 
+        // view the user's wizard
+        if (player.privacy === "_public") {
+          let componentList = player.showPlayer(userID);
+
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  accent_color: 108000,
+                  components: componentList,
+                }
+              ]
+            }
+          });
+        }
+        else if (player.privacy === "_private") {
+          // If no user specified, then show only the user their
+          // wizard
+          if (noUserSpecified === true) {
+            let componentList = player.showPlayer(userID);
+
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 108000,
+                    components: componentList,
+                  }
+                ]
               }
-            ]
+            });
           }
-        });
-      }
+          // Inform external user that target user's profile is private
+          else {
+             return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `This user's wizard profile is set to private!`,
+                  }
+                ]
+              }
+            });
+          }
+        }
+      } 
       else {
         return getWizardMissingResponse(res);
       }
@@ -740,6 +791,94 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
+    if (name === 'leaderboards') {
+      const type = req.body.data.options[0].value;
+
+      let componentList = [];
+
+      if (type === 'Fish Value') {
+        componentList = await getFishingValueLeaderboard();
+      } 
+      else if (type === 'Gold') {
+        componentList = await getGoldLeaderboard();
+      }
+
+      try {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          allowed_mentions: {
+            parse: [],
+          },
+          data: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.CONTAINER,
+                accent_color: 0xFFFF00,
+                components: [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `# 🏆 Leaderboard`
+                  },
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `### For ${type}`
+                  },
+                  {
+                    type: MessageComponentTypes.SEPARATOR,
+                    spacing: 1,
+                  }
+                ].concat(componentList),
+              }
+            ]
+          }
+        });
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
+
+    if (name === 'set_privacy') {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const privacy = req.body.data.options[0].value;
+
+      const playerExists = await hasPlayer(userID);
+
+      if (playerExists === true) {
+        let player = await loadPlayer(userID);
+
+        player.privacy = privacy; 
+
+        await savePlayer(player);
+
+        try {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `Your privacy setting has been set to ${privacy.slice(1)}`
+                }
+              ]
+            }
+          });
+        } catch (err) {
+          console.error("Error sending message: ", err);
+        }
+      }
+      else 
+      {
+        try {
+          return getWizardMissingResponse(res);
+        } catch (err) {
+          console.error("Error sending message: ", err);
+        }
+      }
+    }
+
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
   }
@@ -905,7 +1044,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             })
 
             let arena = new Arena(activeArenas[arenaID]);
-            let messages = await arena.startArena();
+            let result = await arena.startArena();
+            let messages = result.message;
+            let victor = result.victor;
 
             for (let i = 0; i < messages.length; i++) {
               setTimeout(async () => {
@@ -979,6 +1120,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                 }
               }, i * 2500);
             }
+
+            victor.info.arenasWon++;
+
+            await savePlayer(victor);
 
             delete activeArenas[arenaID];
           } catch (err) {
@@ -1131,6 +1276,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           // Show message based on win condition
           if (results.victory === true) {
             player.gold += results.goldGained ? results.goldGained : 0;
+            player.info.enemiesKilled++;
 
             let lootComponents = [];
             const followUpEndpoint = `webhooks/${process.env.APP_ID}/${req.body.token}`;
@@ -1287,6 +1433,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           // Check if player has enough gold
           if (player.gold >= 500) {
             player.gold -= 500; 
+            player.info.lootCratesOpened++;
             await savePlayer(player);
             let lootList = LootManager.getLootShop();
             let success = false;
@@ -1703,11 +1850,18 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
           // Green if initiator wins, red if they lose
           if (results.victory === true) {
+            player.duelsWon++;
+
             color = 0x00FF00;
           }
           else if(results.victory === false) {
+            opponent.duelsWon++;
+
             color = 0xFF0000;
           }
+
+          await savePlayer(player);
+          await savePlayer(opponent);
 
           // Show results
           console.log(results);
@@ -1858,6 +2012,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         // Check if user who used command is same as the person 
         // who clicked the reel button
         if (userID === fisherID) {
+          const player = await loadPlayer(userID);
           // Get fish, weighted
           const fish = FishDB.getRandomFish();
 
@@ -1865,6 +2020,11 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           // whether or not user was able to press the 
           // reel button in time
           if (result === 'succeed') {
+            player.info.fishCaught++;
+            await savePlayer(player);
+
+            await compareToFishingStats(player, fish);
+
             await res.send({
               type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
               data: {
@@ -2191,6 +2351,53 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         }
       }
     }
+    else if (componentID.startsWith('wizard_info_')) {
+      const context = req.body.context;
+      const userID = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      let player = await loadPlayer(userID);
+      let componentList = player.showInfo().concat([
+        {
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+                type: MessageComponentTypes.BUTTON,
+                custom_id: `back_to_wizard_${userID}`,
+                label: 'Back',
+                style: ButtonStyleTypes.PRIMARY,
+            }
+          ]
+        }
+      ]);
+
+      try {
+        await res.send({
+          type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
+        });
+
+        await DiscordRequest(endpoint, {
+          method: "PATCH",
+          body: {
+            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.CONTAINER,
+                accent_color: 108000,
+                components: [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `## 🗒️ ${player.username}'s Stats`,
+                  }
+                ].concat(componentList),
+              }
+            ]
+          }
+        })
+      } catch (err) {
+        console.error("Error sending message", err);
+      }
+    }
 
     return;
   }
@@ -2256,6 +2463,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               content: message,
             }
           ],
+          temperature: 1.5,
           max_output_tokens: 500,
         });
 
@@ -2305,8 +2513,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error("Error sending message: ", err);
       }
     }
-
-    return;
   }
 
   console.error('unknown interaction type', type);

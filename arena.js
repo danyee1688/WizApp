@@ -32,11 +32,11 @@ export class Arena {
         let messages = [];
 
         while (this.players.length > 1) {
-            // 50% chance for nothing to happen and
+            // 25% chance for nothing to happen and
             // get miscellaneous message 
-            // 50% chance for player to attack another player
+            // 75% chance for player to attack another player
             // get combat message
-            if (chance(50)) {
+            if (chance(25)) {
                 let player = this.getRandomPlayer(this.players);
 
                 messages.push(ArenaDB.getRandomMiscMessage(player.username));
@@ -63,7 +63,10 @@ export class Arena {
         console.log("ARENA MESSAGES");
         console.log(messages);
 
-        return messages;
+        return {
+            message: messages,
+            victor: this.players[0]
+        };
     }
 
     // Grab random player from specified list

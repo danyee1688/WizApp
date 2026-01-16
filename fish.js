@@ -87,6 +87,15 @@ export class Fish {
         }
     }
 
+    static fromJSON(doc) {
+        let fishTemp = new Fish(doc._id, doc.fish_name, doc.fish_rarity, doc.weight_rolls);
+
+        fishTemp.weight = doc.weight;
+        fishTemp.value = doc.value;
+
+        return fishTemp;
+    }
+
     // Convert JSON to object
     static fromJSON(data) {
         let fish = new Fish(data._id, data.fish_name, data.fish_rarity, data.weight_rolls);

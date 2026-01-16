@@ -34,6 +34,11 @@ Cast your fishing rod into a nearby pond. Your reflexes count in this fishing mi
 ### Ponder
 Ask your deepest of inquiries to be answered by The Orb.
 
+### Leaderboards
+_Parameter: type_ <br/>
+Take a glance at the leaderboards for a specified metric.
 
+### Set Privacy
+Set your wizard profile privacy setting. Others will not be able to see your wizard using /wizard if set to private.
 
 Created by Daniel Yee

@@ -322,7 +322,7 @@ export class SpellDB {
         7: [
             new Spell(7, 1, "Fusionade", 
                 [20, 0, 20],
-                5, 150,
+                8, 150,
                 [
                     "Scorch",
                     "Freeze",
@@ -332,7 +332,7 @@ export class SpellDB {
             ),
             new Spell(7, 2, "Fusionade", 
                 [21, 0, 21],
-                5, 150,
+                8, 150,
                 [
                     "Scorch",
                     "Freeze",
@@ -342,7 +342,7 @@ export class SpellDB {
             ),
             new Spell(7, 3, "Fusionade", 
                 [23, 0, 23],
-                5, 150,
+                8, 150,
                 [
                     "Scorch",
                     "Freeze",
@@ -352,7 +352,7 @@ export class SpellDB {
             ),
             new Spell(7, 4, "Fusionade", 
                 [26, 0, 26],
-                5, 150,
+                8, 150,
                 [
                     "Scorch",
                     "Freeze",
@@ -362,7 +362,7 @@ export class SpellDB {
             ),
             new Spell(7, 5, "Fusionade", 
                 [30, 0, 30],
-                5, 150,
+                8, 150,
                 [
                     "Scorch",
                     "Freeze",
@@ -374,7 +374,7 @@ export class SpellDB {
         8: [
             new Spell(8, 1, "Spectral Avalanche", 
                 [0, 10, 35],
-                5, 150,
+                7, 150,
                 [
                     "Volt",
                     "Freeze",
@@ -383,7 +383,7 @@ export class SpellDB {
             ),
             new Spell(8, 2, "Spectral Avalanche", 
                 [0, 10, 40],
-                6, 150,
+                8, 150,
                 [
                     "Volt",
                     "Freeze",
@@ -392,7 +392,7 @@ export class SpellDB {
             ),
             new Spell(8, 3, "Spectral Avalanche", 
                 [0, 10, 46],
-                7, 150,
+                9, 150,
                 [
                     "Volt",
                     "Freeze",
@@ -401,7 +401,7 @@ export class SpellDB {
             ),
             new Spell(8, 4, "Spectral Avalanche", 
                 [0, 10, 53],
-                8, 150,
+                10, 150,
                 [
                     "Volt",
                     "Freeze",
@@ -410,7 +410,7 @@ export class SpellDB {
             ),
             new Spell(8, 5, "Spectral Avalanche", 
                 [0, 10, 61],
-                9, 150,
+                11, 150,
                 [
                     "Volt",
                     "Freeze",

@@ -24,6 +24,7 @@ export class Player {
             ring2: null,
             belt: null,
         };
+        this.privacy = "private";
         this.gold = 0;
         this.spellList[0] = SpellDB.getStartingSpell();
         this.increasedDamages = [0, 0, 0, 0, 0, 0];
@@ -31,6 +32,13 @@ export class Player {
         this.increasedHealingReceived = 0;
         this.dodgeChance = 0;
         this.fishList = [];
+        this.info = {
+            enemiesKilled: 0,
+            arenasWon: 0,
+            duelsWon: 0,
+            fishCaught: 0,
+            lootCratesOpened: 0,
+        }
     }
 
     // Dodge chance has a cap of 50%
@@ -150,12 +158,20 @@ export class Player {
     toJSON() {
         let JSON = {
             _id: this.userID,
+            privacy: this.privacy,
             username: this.username,
             gold: this.gold,
             stats: {
                 max_health: this.maxHealth,
                 resistances: this.resistances,
                 attributes: this.attributes,
+            },
+            info: {
+                enemiesKilled: this.info.enemiesKilled,
+                arenasWon: this.info.arenasWon,
+                duelsWon: this.info.duelsWon,
+                fishCaught: this.info.fishCaught,
+                lootCratesOpened: this.info.lootCratesOpened,
             },
             
             // Handle spell list
@@ -186,11 +202,21 @@ export class Player {
         // console.log("Player from JSON: ", doc);
 
         const player = new Player(doc._id, doc.username);
+        player.privacy = doc.privacy ? doc.privacy : "_public";
         player.maxHealth = doc.stats.max_health;
         player.gold = doc.gold;
         player.health = player.maxHealth;
         player.resistances = doc.stats.resistances;
         player.attributes = doc.stats.attributes;
+
+        // Handle info
+        if (doc.info) {
+            player.info.enemiesKilled = doc.info.enemiesKilled ? doc.info.enemiesKilled : 0;
+            player.info.arenasWon = doc.info.arenasWon ? doc.info.arenasWon : 0;
+            player.info.duelsWon = doc.info.duelsWon ? doc.info.duelsWon : 0;
+            player.info.fishCaught = doc.info.fishCaught ? doc.info.fishCaught : 0;
+            player.info.lootCratesOpened = doc.info.lootCratesOpened ? doc.info.lootCratesOpened : 0;
+        }
 
         // Handle spell list
         if (doc.spell_list) {
@@ -274,6 +300,12 @@ export class Player {
                         custom_id: `fish_list_${userID}`,
                         label: 'Fish Barrel',
                         style: ButtonStyleTypes.PRIMARY,
+                    },
+                    {
+                        type: MessageComponentTypes.BUTTON,
+                        custom_id: `wizard_info_${userID}`,
+                        label: 'Stats',
+                        style: ButtonStyleTypes.SECONDARY,
                     },
                 ]
             }
@@ -437,6 +469,33 @@ export class Player {
                 }
             );
         }
+
+        return componentList;
+    }
+
+    showInfo() {
+        let componentList = [
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `Enemies killed: ${this.info.enemiesKilled}`
+            },
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `Arenas won: ${this.info.arenasWon}`
+            },
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `Duels won: ${this.info.duelsWon}`
+            },
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `Fish caught: ${this.info.fishCaught}`
+            },
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `Loot crates opened: ${this.info.lootCratesOpened}`
+            },
+        ]
 
         return componentList;
     }
