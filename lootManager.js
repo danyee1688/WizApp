@@ -64,7 +64,7 @@ export class LootManager {
                 if (chance(95)) {
                     let item = new Item()
                     lootList.push(item);
-                    this.addLoot(item.internalID);
+                    this.addLoot(item.internalID, item);
                 }
                 // 5% chance to drop a spell scroll
                 else {
@@ -90,7 +90,7 @@ export class LootManager {
             if (chance(90)) {
                 let item = new Item()
                 lootList.push(item);
-                this.addLoot(item.internalID);
+                this.addLoot(item.internalID, item);
             }
             // 10% chance to drop a spell scroll
             else {

@@ -1435,6 +1435,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
             player.gold -= 500; 
             player.info.lootCratesOpened++;
             await savePlayer(player);
+
             let lootList = LootManager.getLootShop();
             let success = false;
 
@@ -1573,65 +1574,90 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const itemID = componentID.split('_')[3];
       const item = LootManager.activeLoot.get(itemID);
 
-      if (LootManager.hasLoot(itemID)) {
-        LootManager.removeLoot(itemID);
-      }
+      // Catch old item error
+      // If the bot was restarted the activeItems field is reset
+      if (item === null || item === undefined) {
+        console.log("item is null");
 
-      console.log("itemID: " + itemID);
-
-      // Check if user pressing button is the same as the one who dropped the loot
-      if (userID === lootUserID) {
-        const playerExists = await hasPlayer(userID);
-        if (playerExists === true) {
-          const player = await loadPlayer(userID);
-
-          player.equipItem(item);
-          await savePlayer(player);
-
-          // Delete loot message 
-          try {
-            await res.send({
-              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-              data: {
-                flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
-                components: [
-                  {
-                    type: MessageComponentTypes.TEXT_DISPLAY,
-                    content: `${player.username} has equipped ${item.itemName}, ${item.rarityToString()} ${item.typeToString()}!`
-                  }
-                ]
-              }
-            });
-
-            await DiscordRequest(endpoint, {
-              method: 'DELETE',
-            });
-          } catch (err) {
-            console.error("Error sending response: ", err);
-          }
-        }
-        else {
-          try {
-            await getWizardMissingResponse(res);
-          } catch (err) {
-            console.error("Error sending response: ", err);
-          }
+        try {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: 'This loot is no longer accessible'
+                }
+              ]
+            }
+          });
+        } catch (err) {
+          console.error("Error sending message: ", err);
         }
       }
       else {
-        await res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
-              {
-                type: MessageComponentTypes.TEXT_DISPLAY,
-                content: `This is not your loot! What are ya, a loot goblin??`
-              },
-            ]
+        if (LootManager.hasLoot(itemID)) {
+          LootManager.removeLoot(itemID);
+        }
+
+        console.log("itemID: " + itemID);
+
+        // Check if user pressing button is the same as the one who dropped the loot
+        if (userID === lootUserID) {
+          const playerExists = await hasPlayer(userID);
+          if (playerExists === true) {
+            const player = await loadPlayer(userID);
+
+            player.equipItem(item);
+            await savePlayer(player);
+
+            // Delete loot message 
+            try {
+              await res.send({
+                type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                data: {
+                  flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `${player.username} has equipped ${item.itemName}, ${item.rarityToString()} ${item.typeToString()}!`
+                    }
+                  ]
+                }
+              });
+
+              await DiscordRequest(endpoint, {
+                method: 'DELETE',
+              });
+            } catch (err) {
+              console.error("Error sending response: ", err);
+            }
           }
-        });
+          else {
+            try {
+              await getWizardMissingResponse(res);
+            } catch (err) {
+              console.error("Error sending response: ", err);
+            }
+          }
+        }
+        else {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `This is not your loot! What are ya, a loot goblin??`
+                },
+              ]
+            }
+          });
+        }
       }
+      
     }
     else if (componentID.startsWith('inventory_')) {
       const context = req.body.context;
