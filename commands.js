@@ -236,6 +236,18 @@ const LEADERBOARDS_COMMAND = {
           name: 'Gold',
           value: 'Gold',
         },
+        {
+          name: 'Enemies Killed',
+          value: 'Enemies Killed'
+        },
+        {
+          name: 'Arenas Won',
+          value: 'Arenas Won'
+        },
+        {
+          name: 'Duels Won',
+          value: 'Duels Won'
+        },
       ],
     }
   ],
@@ -272,6 +284,14 @@ const SET_PRIVACY_COMMAND = {
   contexts: [0, 1, 2]
 }
 
+const WORDS_COMMAND = {
+  name: 'runic_words',
+  description: 'Test your vocabulary in this word-based minigame!',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 2],
+}
+
 const ALL_COMMANDS = [
   TEST_COMMAND, 
   START_COMMAND, 
@@ -286,6 +306,7 @@ const ALL_COMMANDS = [
   PONDER_COMMAND,
   LEADERBOARDS_COMMAND,
   SET_PRIVACY_COMMAND,
+  WORDS_COMMAND
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

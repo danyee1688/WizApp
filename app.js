@@ -34,7 +34,17 @@ import { Arena } from './arena.js';
 import { FishDB } from './fishDB.js';
 import { Fish } from './fish.js';
 import { compareToFishingStats, loadFishingStat } from './fishingLeaderboard.js';
-import { getFishingValueLeaderboard, getGoldLeaderboard } from './leaderboardHelper.js';
+import { 
+  getFishingValueLeaderboard, 
+  getGoldLeaderboard,
+  getEnemiesKilledLeaderboard,
+  getArenaWinsLeaderboard,
+  getDuelsWonLeaderboard,
+ } from './leaderboardHelper.js';
+import { WordLibrary } from './wordLibrary.js';
+import { Alphabet } from './alphabet.js';
+import { WordCardDB } from './wordCardDB.js';
+import { WordGameHelper } from './wordGameHelper.js';
 
 // Create an express app
 const app = express();
@@ -44,6 +54,7 @@ let activeArenas = {};
 
 await connectToDB();
 await reloadDatabase();
+await WordLibrary.setup();
 
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
@@ -802,6 +813,15 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       else if (type === 'Gold') {
         componentList = await getGoldLeaderboard();
       }
+      else if (type === 'Enemies Killed') {
+        componentList = await getEnemiesKilledLeaderboard();
+      }
+      else if (type === 'Arenas Won') {
+        componentList = await getArenaWinsLeaderboard();
+      }
+      else if (type === 'Duels Won') {
+        componentList = await getDuelsWonLeaderboard();
+      }
 
       try {
         return res.send({
@@ -879,6 +899,98 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
     }
 
+    if (name === 'runic_words') {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+
+      let componentList = [];
+      WordGameHelper.startNewGame(userID);
+      let activeWordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      for (let i = 0; i < 5; i++) { 
+        activeWordGame.hand.push(WordCardDB.getRandomSoloCard(activeWordGame.activeWord));
+      }
+
+      activeWordGame.hand.forEach((card) => {
+        componentList.push(card.toComponent());
+      });
+
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+          components: [
+            {
+              type: MessageComponentTypes.CONTAINER,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: '## 🔡 Word Game'
+                },
+                {
+                  type: MessageComponentTypes.SEPARATOR,
+                  spacing: 1.5
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `### Points: ${activeWordGame.score}`
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `### Actions Left: ${activeWordGame.actionsLeft}`
+                },
+                {
+                  type: MessageComponentTypes.SEPARATOR,
+                  spacing: 1.5
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: 'Current word: '
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `### ${activeWordGame.activeWord}`,
+                },
+                {
+                  type: MessageComponentTypes.SEPARATOR,
+                  spacing: 1.5
+                },
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `-# Actions available:`,
+                },
+                {
+                  type: MessageComponentTypes.ACTION_ROW,
+                  components: componentList,
+                },
+                {
+                  type: MessageComponentTypes.SEPARATOR,
+                  spacing: 1.5
+                },
+                {
+                  type: MessageComponentTypes.ACTION_ROW,
+                  components: [
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      label: `Submit Word`,
+                      style: ButtonStyleTypes.DANGER,
+                      custom_id: `submit_word_${userID}`
+                    },
+                    {
+                      type: MessageComponentTypes.BUTTON,
+                      label: `Clear Word`,
+                      style: ButtonStyleTypes.DANGER,
+                      custom_id: `clear_${userID}`
+                    },
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      });
+    }
+
     console.error(`unknown command: ${name}`);
     return res.status(400).json({ error: 'unknown command' });
   }
@@ -888,6 +1000,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   // ====================================
   if (type === InteractionType.MESSAGE_COMPONENT) {
     const componentID = data.custom_id;
+
+    console.log("componentID: ", componentID);
 
     if (componentID.startsWith('join_button_')) {
       const context = req.body.context;
@@ -1876,12 +1990,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
           // Green if initiator wins, red if they lose
           if (results.victory === true) {
-            player.duelsWon++;
+            player.info.duelsWon++;
 
             color = 0x00FF00;
           }
           else if(results.victory === false) {
-            opponent.duelsWon++;
+            opponent.info.duelsWon++;
 
             color = 0xFF0000;
           }
@@ -2424,6 +2538,802 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error("Error sending message", err);
       }
     }
+    else if (componentID.startsWith('append_') || componentID.startsWith('add suffix_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const letter = componentID.split('_')[1];
+      let wordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      wordGame.activeWord += letter;
+      wordGame.actionsLeft--;
+      wordGame.hand = [];
+
+      for (let i = 0; i < 5; i++) { 
+        wordGame.hand.push(WordCardDB.getRandomSoloCard(wordGame.activeWord));
+      }
+
+      try {
+        if (wordGame.actionsLeft <= 0) {
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game',
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Game Over!`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+        else {
+          let componentList = [];
+
+          wordGame.hand.forEach((card) => {
+            componentList.push(card.toComponent());
+          });
+
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game'
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Actions Left: ${wordGame.actionsLeft}`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: 'Current word: '
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### ${wordGame.activeWord}`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `-# Actions available:`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: componentList,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Submit Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `submit_word_${userID}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Clear Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `clear_${userID}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message", err);
+      }
+    }
+    else if (componentID.startsWith('prepend_') || componentID.startsWith('add prefix_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const letter = componentID.split('_')[1];
+      let wordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      wordGame.activeWord = letter + wordGame.activeWord;
+      wordGame.actionsLeft--;
+      wordGame.hand = [];
+
+      for (let i = 0; i < 5; i++) { 
+        wordGame.hand.push(WordCardDB.getRandomSoloCard(wordGame.activeWord));
+      }
+
+      try {
+        if (wordGame.actionsLeft <= 0) {
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game',
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Game Over!`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+        else {
+          let componentList = [];
+
+          wordGame.hand.forEach((card) => {
+            componentList.push(card.toComponent());
+          });
+
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game'
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Actions Left: ${wordGame.actionsLeft}`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: 'Current word: '
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### ${wordGame.activeWord}`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `-# Actions available:`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: componentList,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Submit Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `submit_word_${userID}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Clear Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `clear_${userID}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message", err);
+      }
+    }
+    else if (componentID.startsWith('insert_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const letter = componentID.split('_')[1];
+      const index = componentID.split('_')[2];
+      let wordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      wordGame.activeWord = wordGame.activeWord.slice(0, index) + letter + wordGame.activeWord.slice(index);
+      wordGame.actionsLeft--;
+      wordGame.hand = [];
+
+      for (let i = 0; i < 5; i++) { 
+        wordGame.hand.push(WordCardDB.getRandomSoloCard(wordGame.activeWord));
+      }
+
+      try {
+        if (wordGame.actionsLeft <= 0) {
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game',
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Game Over!`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+        else {
+          let componentList = [];
+
+          wordGame.hand.forEach((card) => {
+            componentList.push(card.toComponent());
+          });
+
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game'
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Actions Left: ${wordGame.actionsLeft}`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: 'Current word: '
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### ${wordGame.activeWord}`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `-# Actions available:`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: componentList,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Submit Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `submit_word_${userID}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Clear Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `clear_${userID}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message", err);
+      }
+    }
+    else if (componentID.startsWith('remove_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const index = Number(componentID.split('_')[1]);
+      let wordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      let part1 = wordGame.activeWord.slice(0, index);
+      let part2 = wordGame.activeWord.slice((index + 1), wordGame.activeWord.length);
+
+      wordGame.activeWord = part1 + part2;
+      wordGame.actionsLeft--;
+      wordGame.hand = [];
+
+      for (let i = 0; i < 5; i++) { 
+        wordGame.hand.push(WordCardDB.getRandomSoloCard(wordGame.activeWord));
+      }
+
+      try {
+        if (wordGame.actionsLeft <= 0) {
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game',
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Game Over!`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
+                    }
+                  ]
+                }
+              ]
+            }
+          })
+        }
+        else {
+          let componentList = [];
+
+          wordGame.hand.forEach((card) => {
+            componentList.push(card.toComponent());
+          });
+
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game'
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Actions Left: ${wordGame.actionsLeft}`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: 'Current word: '
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### ${wordGame.activeWord}`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `-# Actions available:`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: componentList,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Submit Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `submit_word_${userID}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Clear Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `clear_${userID}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message", err);
+      }
+    }
+    else if (componentID.startsWith('clear_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const index = componentID.split('_')[1];
+      let wordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      wordGame.activeWord = Alphabet.getRandomLetter();
+      wordGame.actionsLeft--;
+      wordGame.hand = [];
+
+      for (let i = 0; i < 5; i++) { 
+        wordGame.hand.push(WordCardDB.getRandomSoloCard(wordGame.activeWord));
+      }
+
+      try {
+        if (wordGame.actionsLeft <= 0) {
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game',
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Game Over!`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+        else {
+          let componentList = [];
+
+          wordGame.hand.forEach((card) => {
+            componentList.push(card.toComponent());
+          });
+
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game'
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Actions Left: ${wordGame.actionsLeft}`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: 'Current word: '
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### ${wordGame.activeWord}`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `-# Actions available:`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: componentList,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Submit Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `submit_word_${userID}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Clear Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `clear_${userID}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message", err);
+      }
+    }
+    else if (componentID.startsWith('submit_word_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      
+      let wordGame = WordGameHelper.activeSoloWordGames[userID];
+
+      try {
+        if (WordLibrary.wordList.includes(wordGame.activeWord.toLowerCase()) === true && wordGame.activeWord.length >= 3) {
+          wordGame.score += WordGameHelper.getScore(wordGame.activeWord);
+          wordGame.wordsSubmitted.push(wordGame.activeWord);
+          wordGame.activeWord = Alphabet.getRandomLetter();
+
+          let componentList = [];
+
+          wordGame.hand.forEach((card) => {
+            componentList.push(card.toComponent());
+          });
+
+          await res.send({
+            type: InteractionResponseType.UPDATE_MESSAGE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: '## 🔡 Word Game'
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Points: ${wordGame.score}`
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### Actions Left: ${wordGame.actionsLeft}`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: 'Current word: '
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `### ${wordGame.activeWord}`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `-# Actions available:`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: componentList,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Submit Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `submit_word_${userID}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Clear Word`,
+                          style: ButtonStyleTypes.DANGER,
+                          custom_id: `clear_${userID}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+        }
+        else {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `${wordGame.activeWord} is not a valid word!`
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+      
+    }
 
     return;
   }
@@ -2456,17 +3366,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       try {
          await res.send({
-          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseType.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
-              {
-                type: MessageComponentTypes.TEXT_DISPLAY,
-                content: "The orb is thinking...",
-              }
-            ]
-          }
-        });
+          type: InteractionResponseType.DEFERRED_UPDATE_MESSAGE,
+         });
       } catch (err) {
         console.error("Error deferring message", err);
       }
@@ -2539,6 +3440,8 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error("Error sending message: ", err);
       }
     }
+
+    return;
   }
 
   console.error('unknown interaction type', type);
