@@ -40,6 +40,7 @@ import {
   getEnemiesKilledLeaderboard,
   getArenaWinsLeaderboard,
   getDuelsWonLeaderboard,
+  getRunicWordsLeaderboard,
  } from './leaderboardHelper.js';
 import { WordLibrary } from './wordLibrary.js';
 import { Alphabet } from './alphabet.js';
@@ -822,6 +823,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       else if (type === 'Duels Won') {
         componentList = await getDuelsWonLeaderboard();
       }
+      else if (type === 'Runic Words') {
+        componentList = await getRunicWordsLeaderboard();
+      }
 
       try {
         return res.send({
@@ -925,7 +929,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
               components: [
                 {
                   type: MessageComponentTypes.TEXT_DISPLAY,
-                  content: '## 🔡 Word Game'
+                  content: '## 🔡 Runic Words'
                 },
                 {
                   type: MessageComponentTypes.SEPARATOR,
@@ -2554,39 +2558,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       try {
         if (wordGame.actionsLeft <= 0) {
-          await res.send({
-            type: InteractionResponseType.UPDATE_MESSAGE,
-            data: {
-              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.CONTAINER,
-                  components: [
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game',
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Game Over!`,
-                    },
-                    {
-                      type: MessageComponentTypes.SEPARATOR,
-                      spacing: 1.5,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Points: ${wordGame.score}`,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
-                    }
-                  ]
-                }
-              ]
-            }
-          });
+          await WordGameHelper.showGameOver(res, wordGame, userID);
         }
         else {
           let componentList = [];
@@ -2605,7 +2577,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game'
+                      content: '## 🔡 Runic Words'
                     },
                     {
                       type: MessageComponentTypes.SEPARATOR,
@@ -2690,39 +2662,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       try {
         if (wordGame.actionsLeft <= 0) {
-          await res.send({
-            type: InteractionResponseType.UPDATE_MESSAGE,
-            data: {
-              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.CONTAINER,
-                  components: [
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game',
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Game Over!`,
-                    },
-                    {
-                      type: MessageComponentTypes.SEPARATOR,
-                      spacing: 1.5,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Points: ${wordGame.score}`,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
-                    }
-                  ]
-                }
-              ]
-            }
-          });
+          await WordGameHelper.showGameOver(res, wordGame, userID);
         }
         else {
           let componentList = [];
@@ -2741,7 +2681,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game'
+                      content: '## 🔡 Runic Words'
                     },
                     {
                       type: MessageComponentTypes.SEPARATOR,
@@ -2827,39 +2767,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       try {
         if (wordGame.actionsLeft <= 0) {
-          await res.send({
-            type: InteractionResponseType.UPDATE_MESSAGE,
-            data: {
-              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.CONTAINER,
-                  components: [
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game',
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Game Over!`,
-                    },
-                    {
-                      type: MessageComponentTypes.SEPARATOR,
-                      spacing: 1.5,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Points: ${wordGame.score}`,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
-                    }
-                  ]
-                }
-              ]
-            }
-          });
+          await WordGameHelper.showGameOver(res, wordGame, userID);
         }
         else {
           let componentList = [];
@@ -2878,7 +2786,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game'
+                      content: '## 🔡 Runic Words'
                     },
                     {
                       type: MessageComponentTypes.SEPARATOR,
@@ -2966,39 +2874,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       try {
         if (wordGame.actionsLeft <= 0) {
-          await res.send({
-            type: InteractionResponseType.UPDATE_MESSAGE,
-            data: {
-              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.CONTAINER,
-                  components: [
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game',
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Game Over!`,
-                    },
-                    {
-                      type: MessageComponentTypes.SEPARATOR,
-                      spacing: 1.5,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Points: ${wordGame.score}`,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
-                    }
-                  ]
-                }
-              ]
-            }
-          })
+          await WordGameHelper.showGameOver(res, wordGame, userID);
         }
         else {
           let componentList = [];
@@ -3017,7 +2893,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game'
+                      content: '## 🔡 Runic Words'
                     },
                     {
                       type: MessageComponentTypes.SEPARATOR,
@@ -3102,39 +2978,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 
       try {
         if (wordGame.actionsLeft <= 0) {
-          await res.send({
-            type: InteractionResponseType.UPDATE_MESSAGE,
-            data: {
-              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-              components: [
-                {
-                  type: MessageComponentTypes.CONTAINER,
-                  components: [
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game',
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Game Over!`,
-                    },
-                    {
-                      type: MessageComponentTypes.SEPARATOR,
-                      spacing: 1.5,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `### Points: ${wordGame.score}`,
-                    },
-                    {
-                      type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: `Words Submitted:\n${wordGame.wordsSubmitted}`,
-                    }
-                  ]
-                }
-              ]
-            }
-          });
+          await WordGameHelper.showGameOver(res, wordGame, userID);
         }
         else {
           let componentList = [];
@@ -3153,7 +2997,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game'
+                      content: '## 🔡 Runic Words'
                     },
                     {
                       type: MessageComponentTypes.SEPARATOR,
@@ -3250,7 +3094,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
                   components: [
                     {
                       type: MessageComponentTypes.TEXT_DISPLAY,
-                      content: '## 🔡 Word Game'
+                      content: '## 🔡 Runic Words'
                     },
                     {
                       type: MessageComponentTypes.SEPARATOR,

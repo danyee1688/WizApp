@@ -13,11 +13,11 @@ export class WordCardDB {
     ]
 
     static soloCardWeights = [
-        10, // Append
-        10, // Prepend
-        8, // Insert
-        4, // Add Prefix
-        4, // Add Suffix
+        12, // Append
+        12, // Prepend
+        5, // Insert
+        8, // Add Prefix
+        8, // Add Suffix
         4, // Remove
     ]
 

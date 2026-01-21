@@ -12,18 +12,24 @@ export class EnemyDB {
         new Enemy(6, 0, "Flaming Skeleton", 280, [25, 25, 0], [0, 0, 50]),
         new Enemy(7, 0, "Thief", 320, [10, 0, 10], [15, 10, 15]),
         new Enemy(8, 0, "Underling of Snowballery", 300, [0, 0, 30], [5, 5, 50]),
-        new Enemy(9, 0, "Drunk Scorchborne", 390, [25, 0, 10], [30, 30, 30]),
+        new Enemy(9, 0, "Drunk Scorchborne", 390, [25, 0, 10], [30, 0, 0]),
     ]
 
     static enemyListTier1 = [
         new Enemy(0, 1, "Rocc", 2000, [0, 10, 0], [50, 50, 50]),
         new Enemy(1, 1, "Priest of Snowballery", 700, [0, 0, 40], [0, 10, 80]),
         new Enemy(2, 1, "Arcane Witch", 820, [20, 20, 20], [30, 30, 30]),
+        new Enemy(3, 1, "Heinous Scavenger", 580, [20, 0, 30], [20, 10, 20]),
+        new Enemy(4, 1, "Blazing Dart Monger", 660, [45, 0, 0], [100, 10, 10]),
+        new Enemy(5, 1, "Shock Golem", 900, [0, 35, 0], [20, 20, 20]),
+        new Enemy(6, 1, "Scorchborne", 390, [40, 0, 10], [40, 10, 10]),
+        new Enemy(7, 1, "Shrooblin", 400, [0, 50, 10], [0, 0, 0]),
     ]
 
     static enemyListTier2 = [
-        new Enemy(0, 2, "Gargoyle of the Volcanos", 1200, [75, 0, 0], [75, 30, 30]),
-        new Enemy(1, 2, "Archpriest of Snowballery", 1400, [0, 0, 50], [20, 40, 100]),
+        new Enemy(0, 2, "Gargoyle of the Volcanos", 1250, [60, 0, 0], [75, 15, 15]),
+        new Enemy(1, 2, "Archpriest of Snowballery", 1400, [0, 0, 50], [0, 10, 100]),
+        new Enemy(2, 2, "Luhk, God of Gambling", 4000, [7, 7, 7], [7, 7, 7])
     ]
 
     static enemyLists = [

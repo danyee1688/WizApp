@@ -248,6 +248,10 @@ const LEADERBOARDS_COMMAND = {
           name: 'Duels Won',
           value: 'Duels Won'
         },
+        {
+          name: 'Runic Words',
+          value: 'Runic Words',
+        },
       ],
     }
   ],

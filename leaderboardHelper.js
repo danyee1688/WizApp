@@ -2,7 +2,9 @@ import { MessageComponentTypes } from "discord-interactions";
 import { loadAllPlayers } from "./playerManager.js";
 import { loadFishingStat } from "./fishingLeaderboard.js";
 import { Fish } from "./fish.js";
+import { loadStat } from "./runicWordLeaderboard.js";
 
+// Return components for gold amount leaderboard
 export async function getGoldLeaderboard() {
     let playerList = await loadAllPlayers();
 
@@ -27,6 +29,7 @@ export async function getGoldLeaderboard() {
     return componentList;
 }
 
+// Return components for enemies killed leaderboard
 export async function getEnemiesKilledLeaderboard() {
     let playerList = await loadAllPlayers();
 
@@ -51,6 +54,7 @@ export async function getEnemiesKilledLeaderboard() {
     return componentList;
 }
 
+// Return components for arena wins leaderboard
 export async function getArenaWinsLeaderboard() {
     let playerList = await loadAllPlayers();
 
@@ -75,6 +79,7 @@ export async function getArenaWinsLeaderboard() {
     return componentList;
 }
 
+// Return components for duels won leaderboard
 export async function getDuelsWonLeaderboard() {
     let playerList = await loadAllPlayers();
 
@@ -99,6 +104,7 @@ export async function getDuelsWonLeaderboard() {
     return componentList;
 }
 
+// Return components for fishing value leaderboard
 export async function getFishingValueLeaderboard() {
     let componentList = [];
     
@@ -117,6 +123,30 @@ export async function getFishingValueLeaderboard() {
             componentList.push({
                 type: MessageComponentTypes.TEXT_DISPLAY,
                 content: `-#    on ${fishingStat.date}`
+            });
+        }
+    }
+
+    return componentList;
+}
+
+// Return components for runic words leaderboard
+export async function getRunicWordsLeaderboard() {
+    let componentList = [];
+
+    // Get non-null runic word stats
+    for (let i = 1; i <= 10; i++) {
+        let stat = await loadStat(i);
+
+        if (stat) {
+            componentList.push({
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `${i}. <@${stat.userID}> - ${stat.score} Points`
+            });
+
+            componentList.push({
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `-#    on ${stat.date}`
             });
         }
     }
