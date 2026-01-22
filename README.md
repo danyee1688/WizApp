@@ -41,4 +41,7 @@ Take a glance at the leaderboards for a specified metric.
 ### Set Privacy
 Set your wizard profile privacy setting. Others will not be able to see your wizard using /wizard if set to private.
 
+### Runic Words
+Play a short minigame revolving around making words
+
 Created by Daniel Yee
