@@ -44,4 +44,7 @@ Set your wizard profile privacy setting. Others will not be able to see your wiz
 ### Runic Words
 Play a short minigame revolving around making words
 
+### Familiars
+View your familiars, or befriend your first one.
+
 Created by Daniel Yee

@@ -33,7 +33,7 @@ import { WikiDB } from './wikiDB.js';
 import { Arena } from './arena.js';
 import { FishDB } from './fishDB.js';
 import { Fish } from './fish.js';
-import { compareToFishingStats, loadFishingStat } from './fishingLeaderboard.js';
+import { compareToFishingStats } from './fishingLeaderboard.js';
 import { 
   getFishingValueLeaderboard, 
   getGoldLeaderboard,
@@ -46,6 +46,9 @@ import { WordLibrary } from './wordLibrary.js';
 import { Alphabet } from './alphabet.js';
 import { WordCardDB } from './wordCardDB.js';
 import { WordGameHelper } from './wordGameHelper.js';
+import { FamiliarDB } from './familiarDB.js';
+import { Familiar } from './familiar.js';
+import { FamiliarEncounterHandler } from './familiarEncounterHandler.js';
 
 // Create an express app
 const app = express();
@@ -53,6 +56,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 let activeArenas = {};
 
+FamiliarDB.setup();
 await connectToDB();
 await reloadDatabase();
 await WordLibrary.setup();
@@ -280,33 +284,80 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
       let playerExists = await hasPlayer(userID);
       if (playerExists === true) {
-        let enemy = EnemyDB.getRandomEnemy();
-        let componentList = enemy.showEnemy(userID, true);
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        // 75% chance to spawn an enemy
+        // 25% chance to spawn a familiar
+        if (chance(0) === true) {
+          let enemy = EnemyDB.getRandomEnemy();
+          let componentList = enemy.showEnemy(userID, true);
+          const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
 
-        setTimeout(async () => {
-          try {
-            await DiscordRequest(endpoint, {
-              method: 'DELETE',
-            });
-          } catch (err) {
-            console.error("Timeout error: " + err);
-          }
-        }, 30_000);
+          setTimeout(async () => {
+            try {
+              await DiscordRequest(endpoint, {
+                method: 'DELETE',
+              });
+            } catch (err) {
+              console.error("Timeout error: " + err);
+            }
+          }, 30_000);
 
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            flags: InteractionResponseFlags.IS_COMPONENTS_V2,
-            components: [
-              {
-                type: MessageComponentTypes.CONTAINER,
-                accent_color: 0xFF0000,
-                components: componentList,
-              }
-            ]
-          }
-        });
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  accent_color: 0xFF0000,
+                  components: componentList,
+                }
+              ]
+            }
+          });
+        }
+        else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  accent_color: 0x00FF00,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `## A familiar has spawned!`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `❔❔❔`,
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1.5
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: `Begin Encounter`,
+                          style: ButtonStyleTypes.PRIMARY,
+                          custom_id: `begin_encounter_${userID}`
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+            }
+          });
+        }
       }
       else {
         return getWizardMissingResponse(res);
@@ -993,6 +1044,116 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
           ]
         }
       });
+    }
+
+    if (name === 'familiars') {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+
+      let playerExists = await hasPlayer(userID);
+
+      try {
+        if (playerExists === true) {
+          let player = await loadPlayer(userID);
+
+          if (player.familiars.length > 0) {
+            let componentList = player.showFamiliars();
+
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0xAEF042,
+                    components: componentList
+                  }
+                ]
+              }
+            });
+          }
+          else {
+            let [familiar1, familiar2, familiar3] = FamiliarDB.getStartingFamiliars();
+
+            let familiar1Comp = familiar1.toComponent();
+            let familiar2Comp = familiar2.toComponent();
+            let familiar3Comp = familiar3.toComponent();
+
+            const befriend_chance = 100;
+
+            return res.send({
+              type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+              data: {
+                flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+                components: [
+                  {
+                    type: MessageComponentTypes.TEXT_DISPLAY,
+                    content: `Looks like you don't have a familiar yet.\nPlease choose your first familiar!`,
+                  },
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0xFF0000,
+                    components: familiar1Comp.concat([
+                      {
+                        type: MessageComponentTypes.ACTION_ROW,
+                        components: [
+                          {
+                            type: MessageComponentTypes.BUTTON,
+                            label: 'Choose',
+                            custom_id: `befriend_familiar_${userID}_${familiar1.familiarID}_${familiar1.tier}_${familiar1.getMovesToString()}`,
+                            style: ButtonStyleTypes.PRIMARY,
+                          }
+                        ]
+                      }
+                    ]),
+                  },
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0xFFFF00,
+                    components: familiar2Comp.concat([
+                      {
+                        type: MessageComponentTypes.ACTION_ROW,
+                        components: [
+                          {
+                            type: MessageComponentTypes.BUTTON,
+                            label: 'Choose',
+                            custom_id: `befriend_familiar_${userID}_${familiar2.familiarID}_${familiar2.tier}_${familiar2.getMovesToString()}`,
+                            style: ButtonStyleTypes.PRIMARY,
+                          }
+                        ]
+                      }
+                    ]),
+                  },
+                  {
+                    type: MessageComponentTypes.CONTAINER,
+                    accent_color: 0x0000FF,
+                    components: familiar3Comp.concat([
+                      {
+                        type: MessageComponentTypes.ACTION_ROW,
+                        components: [
+                          {
+                            type: MessageComponentTypes.BUTTON,
+                            label: 'Choose',
+                            custom_id: `befriend_familiar_${userID}_${familiar3.familiarID}_${familiar3.tier}_${familiar3.getMovesToString()}`,
+                            style: ButtonStyleTypes.PRIMARY,
+                          }
+                        ]
+                      }
+                    ]),
+                  },
+                ]
+              }
+            });
+          }
+        } 
+        else {
+          return getWizardMissingResponse(res);
+        }
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+      
     }
 
     console.error(`unknown command: ${name}`);
@@ -3177,6 +3338,200 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         console.error("Error sending message: ", err);
       }
       
+    }
+    else if (componentID.startsWith('befriend_familiar_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const initialUserID = componentID.split('_')[2];
+      const familiarID = componentID.split('_')[3];
+      const familiarTier = componentID.split('_')[4];
+      const familiarMoves = componentID.split('_')[5];
+
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+      
+      try {
+        if (initialUserID === userID) {
+          let player = await loadPlayer(userID);
+          let familiar = Familiar.copyFamiliar(FamiliarDB.familiarList[familiarID]);
+
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.CONTAINER,
+                  components: [
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `## Familiar Manager`
+                    },
+                    {
+                      type: MessageComponentTypes.SEPARATOR,
+                      spacing: 1,
+                    },
+                    {
+                      type: MessageComponentTypes.TEXT_DISPLAY,
+                      content: `Please choose which familiar slot you want ${familiar.familiarName} to reside in!`,
+                    },
+                    {
+                      type: MessageComponentTypes.ACTION_ROW,
+                      components: [
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: player.familiars[0] ? `1 - ${player.familiars[0].familiarName}` : `1 - None`,
+                          style: ButtonStyleTypes.PRIMARY,
+                          custom_id: `familiar_equip_0_${familiarID}_${familiarTier}_${familiarMoves}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: player.familiars[1] ? `2 - ${player.familiars[1].familiarName}` : `2 - None`,
+                          style: ButtonStyleTypes.PRIMARY,
+                          custom_id: `familiar_equip_1_${familiarID}_${familiarTier}_${familiarMoves}`
+                        },
+                        {
+                          type: MessageComponentTypes.BUTTON,
+                          label: player.familiars[2] ? `3 - ${player.familiars[2].familiarName}` : `3 - None`,
+                          style: ButtonStyleTypes.PRIMARY,
+                          custom_id: `familiar_equip_2_${familiarID}_${familiarTier}_${familiarMoves}`
+                        },
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          });
+          
+          await DiscordRequest(endpoint, {
+            method: 'DELETE',
+          });
+        }
+        else {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: `This is not your familiar to befriend!`
+                }
+              ]
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
+    else if (componentID.startsWith('familiar_equip_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const index = Number(componentID.split('_')[2]);
+      const familiarID = componentID.split('_')[3];
+      const familiarTier = componentID.split('_')[4];
+      const familiarMoves = componentID.split('_')[5].split('-').map(string => Number(string));
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+      
+      try {
+        let player = await loadPlayer(userID);
+        let familiar = Familiar.copyFamiliar(FamiliarDB.familiarList[familiarID]);
+        
+        familiar.tier = familiarTier;
+        familiar.setMoveSet(familiarMoves);
+        familiar.getBaseStats();
+
+        player.familiars[index] = familiar;
+
+        await savePlayer(player);
+
+        await res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+            components: [
+              {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `${familiar.familiarName} has been slot into position ${index + 1}!`
+              }
+            ]
+          }
+        });
+
+        await DiscordRequest(endpoint, {
+            method: 'DELETE',
+          });
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
+    else if (componentID.startsWith('begin_encounter_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const storedUserID = componentID.split('_')[2];
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/${req.body.message.id}`;
+
+      try {
+        if (userID === storedUserID) {
+          const player = await loadPlayer(userID);
+
+          let randomFamiliar = FamiliarDB.getRandomFamiliar();
+          
+          await FamiliarEncounterHandler.startBattle(res, player, randomFamiliar);
+
+          await DiscordRequest(endpoint, {
+            method: "DELETE"
+          })
+        }
+        else {
+          await res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              flags: InteractionResponseFlags.EPHEMERAL | InteractionResponseFlags.IS_COMPONENTS_V2,
+              components: [
+                {
+                  type: MessageComponentTypes.TEXT_DISPLAY,
+                  content: 'This not your encounter'
+                }
+              ]
+            }
+          })
+        }
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
+    else if (componentID.startsWith('familiar_moves_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+
+      try {
+        await FamiliarEncounterHandler.showMoves(res, userID);
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
+    else if (componentID.startsWith('back_to_encounter_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+
+      try {
+        await FamiliarEncounterHandler.backToEncounter(res, userID);
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
+    }
+    else if (componentID.startsWith('use_move_')) {
+      const context = req.body.context;
+      const userID = context === 0 ? req.body.member.user.id : req.body.user.id;
+      const moveIndex = componentID.split('_')[3];
+
+      try {
+        await FamiliarEncounterHandler.useMove(res, userID, moveIndex);
+      } catch (err) {
+        console.error("Error sending message: ", err);
+      }
     }
 
     return;

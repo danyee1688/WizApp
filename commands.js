@@ -296,6 +296,14 @@ const WORDS_COMMAND = {
   contexts: [0, 2],
 }
 
+const FAMILIARS = {
+  name: 'familiars',
+  description: 'View your loyal familiars, or choose your first one!',
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1, 2],
+}
+
 const ALL_COMMANDS = [
   TEST_COMMAND, 
   START_COMMAND, 
@@ -310,7 +318,8 @@ const ALL_COMMANDS = [
   PONDER_COMMAND,
   LEADERBOARDS_COMMAND,
   SET_PRIVACY_COMMAND,
-  WORDS_COMMAND
+  WORDS_COMMAND,
+  FAMILIARS,
 ];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

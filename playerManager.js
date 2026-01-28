@@ -47,8 +47,16 @@ const PlayerSchema = new mongoose.Schema({
             weight_rolls: [Number],
             weight: Number,
             value: Number,
-        }
+        } 
     ],
+    familiars: [
+        {
+            familiarID: Number,
+            familiarName: String,
+            moveSet: [Object],
+            tier: Number
+        }
+    ]
 });
 
 export const PlayerModel = mongoose.model("Player", PlayerSchema);

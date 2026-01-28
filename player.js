@@ -7,6 +7,7 @@ import {
 } from 'discord-interactions';
 import { chance } from './chance.js';
 import { Fish } from './fish.js';
+import { Familiar } from './familiar.js';
 
 export class Player {
     constructor(userID, username) {
@@ -39,6 +40,7 @@ export class Player {
             fishCaught: 0,
             lootCratesOpened: 0,
         }
+        this.familiars = [null, null, null];
     }
 
     // Dodge chance has a cap of 50%
@@ -188,6 +190,9 @@ export class Player {
 
             // Handle fish barrel
             fish_list: this.fishList.map(fish => fish ? fish.toJSON() : null),
+
+            // Handle familiars
+            familiars: this.familiars.map(familiar => familiar ? familiar.toJSON() : null),
         }
         // console.log("Player to JSON: ", JSON);
         return JSON;
@@ -240,6 +245,13 @@ export class Player {
         if (doc.fish_list) {
             player.fishList = doc.fish_list.map(
                 fishData => Fish.fromJSON(fishData)
+            )
+        }
+
+        // Handle familiars
+        if (doc.familiars) {
+            player.familiars = doc.familiars.map(
+                familiar => familiar ? Familiar.fromJSON(familiar) : null,
             )
         }
 
@@ -497,6 +509,27 @@ export class Player {
             },
         ]
 
+        return componentList;
+    }
+
+    showFamiliars() {
+         let componentList = [
+            {
+                type: MessageComponentTypes.TEXT_DISPLAY,
+                content: `## 🐰 ${this.username}'s Familiars`
+            },
+            {
+                type: MessageComponentTypes.SEPARATOR,
+                spacing: 1,
+            }
+        ];
+
+        this.familiars.forEach((familiar) => {
+            if (familiar != null && familiar != undefined) {
+                componentList = componentList.concat(familiar.toComponent());
+            }
+        });
+        
         return componentList;
     }
 
